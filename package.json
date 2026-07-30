@@ -1,0 +1,32 @@
+{
+  "name": "personal-finance-os",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": "24.18.0",
+    "pnpm": "11.18.0"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "pnpm --recursive --if-present run typecheck",
+    "test:unit": "node scripts/run-vitest.mjs",
+    "build": "pnpm --recursive --if-present run build",
+    "check:adrs": "node scripts/check-adrs.mjs",
+    "check:threat-model": "node scripts/check-threat-model.mjs",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "check:versions": "node scripts/check-versions.mjs",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build && pnpm check:adrs && pnpm check:threat-model && pnpm check:boundaries && pnpm check:versions"
+  },
+  "devDependencies": {
+    "@typescript/native": "npm:typescript@7.0.2",
+    "eslint": "10.8.0",
+    "eslint-config-next": "16.2.12",
+    "eslint-plugin-boundaries": "7.1.0",
+    "prettier": "3.9.6",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "vitest": "4.1.10"
+  }
+}

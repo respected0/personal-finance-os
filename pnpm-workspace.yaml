@@ -1,0 +1,15 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+
+engineStrict: true
+lockfile: true
+nodeVersion: 24.18.0
+preferFrozenLockfile: true
+saveExact: true
+sharedWorkspaceLockfile: true
+strictPeerDependencies: false
