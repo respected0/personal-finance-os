@@ -52,4 +52,15 @@ describe("B003 CI policy", () => {
       expect(combined).toContain(`name: ${check}`);
     }
   });
+
+  test("preserves the migration smoke exit status while capturing its log", async () => {
+    const workflow = await readFile(
+      ".github/workflows/migration-smoke.yml",
+      "utf8",
+    );
+
+    expect(workflow).toMatch(
+      /set -o pipefail[\s\S]{0,160}pnpm db:smoke 2>&1 \| tee/,
+    );
+  });
 });

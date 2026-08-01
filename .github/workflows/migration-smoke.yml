@@ -42,6 +42,7 @@ jobs:
         run: echo 'DROP SCHEMA app_identity CASCADE;' >> supabase/migrations/00000000000000_m0_foundation.sql
       - name: Run fresh migration smoke
         run: |
+          set -o pipefail
           mkdir -p .tmp/ci
           pnpm db:smoke 2>&1 | tee .tmp/ci/migration-smoke.log
       - name: Upload migration smoke report
