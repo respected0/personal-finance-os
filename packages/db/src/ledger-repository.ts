@@ -24,6 +24,7 @@ export interface CommitTransactionInput {
   readonly actorSessionId?: string;
   readonly command: TransactionCommand;
   readonly previewHash?: string;
+  readonly subscriptionCycleId?: string;
 }
 
 export interface CommitTransactionResponse {
@@ -84,6 +85,18 @@ export class StatementAllocationError extends Error {
       "A card statement allocation exceeds its current outstanding amount.",
     );
     this.name = "StatementAllocationError";
+  }
+}
+
+export class SubscriptionCycleStateError extends Error {
+  readonly code = "subscription_cycle_conflict";
+  readonly status = 409;
+
+  constructor() {
+    super(
+      "The subscription cycle charge or cashback state is no longer valid.",
+    );
+    this.name = "SubscriptionCycleStateError";
   }
 }
 
@@ -524,6 +537,51 @@ export async function commitLedgerTransaction(
                 ${allocation.amount}::numeric
               )
             `;
+          }
+        }
+
+        if (input.subscriptionCycleId) {
+          if (
+            input.command.type !== "expense" &&
+            input.command.type !== "cashback_refund"
+          ) {
+            throw new SubscriptionCycleStateError();
+          }
+          if (input.command.type === "expense") {
+            const updated = await tx`
+              update app_private.subscription_cycles as cycle
+                 set charge_transaction_id = ${transactionId}::uuid,
+                     actual_net = ${input.command.amount}::numeric
+                from app_private.subscriptions as subscription
+               where cycle.user_id = ${input.userId}::uuid
+                 and cycle.id = ${input.subscriptionCycleId}::uuid
+                 and cycle.charge_transaction_id is null
+                 and subscription.user_id = cycle.user_id
+                 and subscription.id = cycle.subscription_id
+                 and subscription.active
+                 and subscription.payment_account_id = ${input.command.sourceAccountId}::uuid
+              returning cycle.id
+            `;
+            if (!updated[0]) throw new SubscriptionCycleStateError();
+          } else {
+            const updated = await tx`
+              update app_private.subscription_cycles as cycle
+                 set cashback_total = cycle.cashback_total + ${input.command.amount}::numeric,
+                     actual_net = cycle.actual_net - ${input.command.amount}::numeric
+                from app_private.subscriptions as subscription
+               where cycle.user_id = ${input.userId}::uuid
+                 and cycle.id = ${input.subscriptionCycleId}::uuid
+                 and cycle.charge_transaction_id = ${input.command.relatedTransactionId}::uuid
+                 and cycle.actual_net >= ${input.command.amount}::numeric
+                 and subscription.user_id = cycle.user_id
+                 and subscription.id = cycle.subscription_id
+                 and subscription.id = ${input.command.subscriptionId ?? null}::uuid
+                 and subscription.active
+                 and cycle.cashback_total + ${input.command.amount}::numeric
+                   <= subscription.cashback_cap
+              returning cycle.id
+            `;
+            if (!updated[0]) throw new SubscriptionCycleStateError();
           }
         }
 

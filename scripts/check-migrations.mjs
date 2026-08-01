@@ -14,6 +14,7 @@ const rlsHarnessMigrationName = "00000000000001_m0_rls_harness.sql";
 const ledgerKernelMigrationName = "20260801173000_p0_a0_ledger_kernel.sql";
 const dailyCoreMigrationName = "20260801212000_p0_a1_daily_core.sql";
 const cardFlowsMigrationName = "20260801231500_p0_a2_card_flows.sql";
+const subscriptionMigrationName = "20260801234500_p0_a2_subscriptions.sql";
 
 async function read(relativePath) {
   return readFile(path.join(rootDirectory, relativePath), "utf8");
@@ -41,6 +42,11 @@ if (!migrationFiles.includes(dailyCoreMigrationName)) {
 }
 if (!migrationFiles.includes(cardFlowsMigrationName)) {
   errors.push(`Eksik P0-A2 card migration: ${cardFlowsMigrationName}.`);
+}
+if (!migrationFiles.includes(subscriptionMigrationName)) {
+  errors.push(
+    `Eksik P0-A2 subscription migration: ${subscriptionMigrationName}.`,
+  );
 }
 
 const versions = new Set();
@@ -241,6 +247,34 @@ for (const [pattern, message] of [
 }
 if (!rpcSignature || /user_id/i.test(rpcSignature[1])) {
   errors.push("B008 RPC istemciden user_id parametresi alamaz.");
+}
+
+const subscriptionMigration = await read(
+  `supabase/migrations/${subscriptionMigrationName}`,
+);
+for (const [pattern, message] of [
+  [
+    /create\s+table\s+app_private\.subscriptions/i,
+    "B042 subscriptions tablosu eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.subscription_cycles/i,
+    "B042 subscription_cycles tablosu eksik.",
+  ],
+  [
+    /unique\s*\(user_id,\s*subscription_id,\s*period\)/i,
+    "B042 cycle aylık uniqueness eksik.",
+  ],
+  [
+    /cashback_total[\s\S]*actual_net[\s\S]*subscription_cycles_deferred_net/i,
+    "B043 gross/cashback/actual-net deferred invariant eksik.",
+  ],
+  [
+    /alter\s+table\s+app_private\.subscription_cycles\s+force\s+row\s+level\s+security/i,
+    "B042 subscription cycle forced RLS açık değil.",
+  ],
+]) {
+  if (!pattern.test(subscriptionMigration)) errors.push(message);
 }
 
 const ledgerKernelMigration = await read(

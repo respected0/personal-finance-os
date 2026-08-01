@@ -1,0 +1,89 @@
+CanonicalRate:
+  type: string
+  pattern: "^(?:0(?:\\.[0-9]{1,8})?|1(?:\\.0{1,8})?)$"
+
+SubscriptionCreate:
+  type: object
+  additionalProperties: false
+  required:
+    - name
+    - billingDay
+    - paymentAccountId
+    - expectedGross
+    - cashbackRate
+    - cashbackCap
+  properties:
+    name: { type: string, minLength: 1, maxLength: 120 }
+    billingDay: { type: integer, minimum: 1, maximum: 31 }
+    paymentAccountId: { $ref: "./ledger.yaml#/Uuid" }
+    expectedGross: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    cashbackRate: { $ref: "#/CanonicalRate" }
+    cashbackCap: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+
+SubscriptionCycle:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - period
+    - renewalDate
+    - chargeTransactionId
+    - chargeTotal
+    - cashbackTotal
+    - actualNet
+  properties:
+    id: { $ref: "./ledger.yaml#/Uuid" }
+    period: { type: string, format: date }
+    renewalDate: { type: string, format: date }
+    chargeTransactionId:
+      oneOf:
+        - { $ref: "./ledger.yaml#/Uuid" }
+        - { type: "null" }
+    chargeTotal: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    cashbackTotal: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    actualNet: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+
+Subscription:
+  allOf:
+    - { $ref: "#/SubscriptionCreate" }
+    - type: object
+      required: [id, expectedCashback, expectedNet, active, rowVersion, cycles]
+      properties:
+        id: { $ref: "./ledger.yaml#/Uuid" }
+        expectedCashback: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+        expectedNet: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+        active: { type: boolean }
+        rowVersion: { type: integer, minimum: 1 }
+        cycles:
+          type: array
+          items: { $ref: "#/SubscriptionCycle" }
+  unevaluatedProperties: false
+
+CycleEventBase:
+  type: object
+  additionalProperties: false
+  required: [amount, currency, occurredAt, economicDate]
+  properties:
+    amount: { $ref: "./ledger.yaml#/PositiveMoneyString" }
+    currency: { $ref: "./ledger.yaml#/CurrencyCode" }
+    occurredAt: { type: string, format: date-time }
+    economicDate: { type: string, format: date }
+
+SubscriptionChargeRequest:
+  allOf:
+    - { $ref: "#/CycleEventBase" }
+    - type: object
+      required: [categoryId]
+      properties:
+        categoryId: { $ref: "./ledger.yaml#/Uuid" }
+  unevaluatedProperties: false
+
+SubscriptionCashbackRequest:
+  allOf:
+    - { $ref: "#/CycleEventBase" }
+    - type: object
+      required: [targetAccountId, targetKind]
+      properties:
+        targetAccountId: { $ref: "./ledger.yaml#/Uuid" }
+        targetKind: { enum: [bank, cash, card] }
+  unevaluatedProperties: false

@@ -200,7 +200,30 @@ async function createFixture(cookie) {
     "Kart profili fixture oluşturulamadı.",
   );
 
-  return { bankAccountId, cashAccountId, cardAccountId, expenseCategoryId };
+  const subscription = await api("/api/v1/subscriptions", {
+    cookie,
+    method: "POST",
+    body: {
+      name: "Sentetik Tarayıcı Aboneliği",
+      billingDay: 12,
+      paymentAccountId: cardAccountId,
+      expectedGross: "500.00",
+      cashbackRate: "0.10",
+      cashbackCap: "50.00",
+    },
+  });
+  assert(
+    subscription.response.status === 201 && subscription.payload.cycles[0]?.id,
+    "Abonelik fixture oluşturulamadı.",
+  );
+
+  return {
+    bankAccountId,
+    cashAccountId,
+    cardAccountId,
+    expenseCategoryId,
+    subscriptionCycleId: subscription.payload.cycles[0].id,
+  };
 }
 
 async function runDesktop(cookie, fixture) {
@@ -320,6 +343,52 @@ async function runDesktop(cookie, fixture) {
     page.locator(".account-row").filter({ hasText: "Sentetik Tarayıcı Kartı" }),
   ).toContainText("200,10 TRY");
 
+  const subscriptionSummary = page.getByTestId("subscription-summary");
+  await expect(subscriptionSummary).toContainText(
+    "Sentetik Tarayıcı Aboneliği",
+  );
+  await expect(subscriptionSummary).toContainText("Beklenen net 450,00 TRY");
+  await expect(subscriptionSummary).toContainText("Yenileme 2026-08-12");
+  const subscriptionWorkspace = page.locator(".subscription-workspace");
+  const chargeForm = subscriptionWorkspace.locator("form").filter({
+    has: page.getByRole("heading", { name: "Brüt tahsilatı kaydet" }),
+  });
+  await chargeForm
+    .getByLabel("Tahsilat döngüsü")
+    .selectOption(fixture.subscriptionCycleId);
+  await chargeForm
+    .getByLabel("Tahsilat kategorisi")
+    .selectOption(fixture.expenseCategoryId);
+  await chargeForm.getByLabel("Brüt tahsilat").fill("500,00");
+  await chargeForm.getByRole("button", { name: "Tahsilatı kaydet" }).click();
+  await expect(subscriptionWorkspace.getByRole("status")).toContainText(
+    "brüt gider",
+  );
+  await expect(page.getByTestId("period-expense")).toHaveText("1.230,10 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("18.769,90 TRY");
+
+  const cashbackForm = subscriptionWorkspace.locator("form").filter({
+    has: page.getByRole("heading", { name: "Cashback kaydet" }),
+  });
+  await cashbackForm
+    .getByLabel("Cashback döngüsü")
+    .selectOption(fixture.subscriptionCycleId);
+  await cashbackForm
+    .getByLabel("Cashback hedefi")
+    .selectOption(fixture.cardAccountId);
+  await cashbackForm.getByLabel("Cashback tutarı").fill("50,00");
+  await cashbackForm.getByRole("button", { name: "Cashback kaydet" }).click();
+  await expect(subscriptionWorkspace.getByRole("status")).toContainText(
+    "normal gelir 0",
+  );
+  await expect(subscriptionSummary).toContainText("Gerçek net 450,00 TRY");
+  await expect(subscriptionSummary).toContainText(
+    "Tahsilat ve cashback bağlantısı aktif",
+  );
+  await expect(page.getByTestId("period-expense")).toHaveText("1.180,10 TRY");
+  await expect(page.getByTestId("period-income")).toHaveText("0,00 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("18.819,90 TRY");
+
   await expect(
     page
       .locator(".account-row")
@@ -350,7 +419,7 @@ async function runDesktop(cookie, fixture) {
   await expect(page.getByTestId("history-aggregate")).toContainText(
     "Gider 427,50 TRY",
   );
-  await expect(page.getByTestId("period-expense")).toHaveText("730,10 TRY");
+  await expect(page.getByTestId("period-expense")).toHaveText("1.180,10 TRY");
 
   await context.close();
 }
@@ -362,6 +431,7 @@ async function runMobile(cookie, fixture) {
   await context.addCookies(browserCookies(cookie));
   const page = await context.newPage();
   await page.goto(webUrl);
+  await expect(page.getByTestId("net-worth")).toHaveText("18.819,90 TRY");
   const noInitialOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth <= window.innerWidth,
   );
@@ -398,7 +468,7 @@ async function runMobile(cookie, fixture) {
   assert(noEntryOverflow, "390×844 işlem görünümünde yatay taşma var.");
   await page.getByRole("button", { name: "İşlemi kaydet" }).click();
   await expect(page.getByRole("status")).toContainText("Gider kaydedildi.");
-  await expect(page.getByTestId("net-worth")).toHaveText("19.257,56 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("18.807,56 TRY");
   await context.close();
 }
 
@@ -500,6 +570,9 @@ try {
   console.log("P0-A1 390x844 no-overflow/effect/44px/under-20s flow: PASS");
   console.log("P0-A1 UAT-01/02/15/16 synthetic browser evidence: PASS");
   console.log("P0-A2 UAT-03/04 card expense/payment browser evidence: PASS");
+  console.log(
+    "P0-A2 UAT-05 subscription/cashback linked browser evidence: PASS",
+  );
 } finally {
   await browser?.close();
   if (webProcess && webProcess.exitCode === null) {
