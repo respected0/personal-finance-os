@@ -13,6 +13,7 @@ const foundationMigrationName = "00000000000000_m0_foundation.sql";
 const rlsHarnessMigrationName = "00000000000001_m0_rls_harness.sql";
 const ledgerKernelMigrationName = "20260801173000_p0_a0_ledger_kernel.sql";
 const dailyCoreMigrationName = "20260801212000_p0_a1_daily_core.sql";
+const cardFlowsMigrationName = "20260801231500_p0_a2_card_flows.sql";
 
 async function read(relativePath) {
   return readFile(path.join(rootDirectory, relativePath), "utf8");
@@ -37,6 +38,9 @@ if (!migrationFiles.includes(ledgerKernelMigrationName)) {
 }
 if (!migrationFiles.includes(dailyCoreMigrationName)) {
   errors.push(`Eksik P0-A1 daily core migration: ${dailyCoreMigrationName}.`);
+}
+if (!migrationFiles.includes(cardFlowsMigrationName)) {
+  errors.push(`Eksik P0-A2 card migration: ${cardFlowsMigrationName}.`);
 }
 
 const versions = new Set();
@@ -191,6 +195,50 @@ for (const [pattern, message] of [
 const rpcSignature = rlsHarnessMigration.match(
   /create\s+function\s+app_identity\.create_rls_probe_parent\s*\(([^)]*)\)/i,
 );
+
+const cardFlowsMigration = await read(
+  `supabase/migrations/${cardFlowsMigrationName}`,
+);
+for (const [pattern, message] of [
+  [
+    /create\s+table\s+app_private\.credit_card_profiles/i,
+    "B037 credit_card_profiles tablosu eksik.",
+  ],
+  [
+    /credit_limit\s+numeric\s*\(19\s*,\s*4\)[\s\S]*credit_limit\s*>=\s*0/i,
+    "B037 credit limit exact/non-negative politikası eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.credit_card_statements/i,
+    "B040 credit_card_statements tablosu eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.statement_payments/i,
+    "B040 statement_payments tablosu eksik.",
+  ],
+  [
+    /check\s*\(paid_amount\s*<=\s*closing_balance\)/i,
+    "B040 statement over-allocation DB kontrolü eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.installment_plans/i,
+    "B041 installment_plans tablosu eksik.",
+  ],
+  [
+    /recognition_policy[\s\S]*full_at_purchase/i,
+    "B041 full_at_purchase politikası eksik.",
+  ],
+  [
+    /create\s+constraint\s+trigger\s+installment_plans_deferred_total[\s\S]*deferrable\s+initially\s+deferred/i,
+    "B041 installment exact toplam constraint trigger'ı eksik.",
+  ],
+  [
+    /alter\s+table\s+app_private\.credit_card_profiles\s+force\s+row\s+level\s+security/i,
+    "B037 credit_card_profiles forced RLS açık değil.",
+  ],
+]) {
+  if (!pattern.test(cardFlowsMigration)) errors.push(message);
+}
 if (!rpcSignature || /user_id/i.test(rpcSignature[1])) {
   errors.push("B008 RPC istemciden user_id parametresi alamaz.");
 }

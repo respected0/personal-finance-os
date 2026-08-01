@@ -22,8 +22,10 @@ describe("B013 typed command contract", () => {
         type: "expense",
         amount: "10.00",
         sourceAccountId: id("1"),
-        sourceKind: "bank",
+        sourceKind: "card",
         categoryId: id("2"),
+        installmentCount: 3,
+        firstInstallmentDate: "2026-08-10",
       },
       {
         ...common,
@@ -49,6 +51,7 @@ describe("B013 typed command contract", () => {
         amount: "10.00",
         bankAccountId: id("1"),
         cardAccountId: id("2"),
+        statementAllocations: [{ statementId: id("20"), amount: "10.00" }],
       },
       {
         ...common,

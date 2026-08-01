@@ -1,0 +1,87 @@
+MinimumPaymentPercentageRule:
+  type: object
+  additionalProperties: false
+  required: [type, rate, minimumAmount]
+  properties:
+    type: { const: percentage }
+    rate:
+      type: string
+      pattern: "^(?:0(?:\\.[0-9]{1,6})?|1(?:\\.0{1,6})?)$"
+    minimumAmount: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+
+MinimumPaymentFixedRule:
+  type: object
+  additionalProperties: false
+  required: [type, amount]
+  properties:
+    type: { const: fixed }
+    amount: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+
+MinimumPaymentRule:
+  oneOf:
+    - { $ref: "#/MinimumPaymentPercentageRule" }
+    - { $ref: "#/MinimumPaymentFixedRule" }
+  discriminator:
+    propertyName: type
+
+CreditCardProfileCreate:
+  type: object
+  additionalProperties: false
+  required: [accountId, creditLimit, statementDay, dueDay, minimumPaymentRule]
+  properties:
+    accountId: { $ref: "./ledger.yaml#/Uuid" }
+    creditLimit: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    statementDay: { type: integer, minimum: 1, maximum: 31 }
+    dueDay: { type: integer, minimum: 1, maximum: 31 }
+    minimumPaymentRule: { $ref: "#/MinimumPaymentRule" }
+
+CreditCardProfile:
+  allOf:
+    - { $ref: "#/CreditCardProfileCreate" }
+    - type: object
+      required: [active, rowVersion]
+      properties:
+        active: { type: boolean }
+        rowVersion: { type: integer, minimum: 1 }
+  unevaluatedProperties: false
+
+CreditCardStatement:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - cardAccountId
+    - periodStart
+    - periodEnd
+    - closingBalance
+    - minimumDue
+    - paidAmount
+    - outstandingAmount
+    - dueDate
+    - status
+  properties:
+    id: { $ref: "./ledger.yaml#/Uuid" }
+    cardAccountId: { $ref: "./ledger.yaml#/Uuid" }
+    periodStart: { type: string, format: date }
+    periodEnd: { type: string, format: date }
+    closingBalance: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    minimumDue: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    paidAmount: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    outstandingAmount: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    dueDate: { type: string, format: date }
+    status: { enum: [open, partially_paid, paid, overdue] }
+
+CardPaymentPreviewRequest:
+  type: object
+  additionalProperties: false
+  required: [amount, currency, occurredAt, economicDate, bankAccountId]
+  properties:
+    amount: { $ref: "./ledger.yaml#/PositiveMoneyString" }
+    currency: { $ref: "./ledger.yaml#/CurrencyCode" }
+    occurredAt: { type: string, format: date-time }
+    economicDate: { type: string, format: date }
+    bankAccountId: { $ref: "./ledger.yaml#/Uuid" }
+    statementAllocations:
+      type: array
+      maxItems: 24
+      items: { $ref: "./ledger.yaml#/StatementAllocation" }

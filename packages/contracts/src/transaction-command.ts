@@ -49,6 +49,8 @@ export const expenseCommandSchema = z
     sourceAccountId: uuidSchema,
     sourceKind: accountKindSchema,
     categoryId: uuidSchema,
+    installmentCount: z.number().int().min(2).max(60).optional(),
+    firstInstallmentDate: isoDateSchema.optional(),
   })
   .strict();
 
@@ -88,6 +90,17 @@ export const cardPaymentCommandSchema = z
     amount: positiveMoneyStringSchema,
     bankAccountId: uuidSchema,
     cardAccountId: uuidSchema,
+    statementAllocations: z
+      .array(
+        z
+          .object({
+            statementId: uuidSchema,
+            amount: positiveMoneyStringSchema,
+          })
+          .strict(),
+      )
+      .max(24)
+      .optional(),
   })
   .strict();
 

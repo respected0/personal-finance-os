@@ -75,6 +75,18 @@ export class PreviewMismatchError extends Error {
   }
 }
 
+export class StatementAllocationError extends Error {
+  readonly code = "statement_allocation_exceeded";
+  readonly status = 409;
+
+  constructor() {
+    super(
+      "A card statement allocation exceeds its current outstanding amount.",
+    );
+    this.name = "StatementAllocationError";
+  }
+}
+
 export function createLedgerSql(
   databaseUrl: string,
   options: { readonly max?: number } = {},
@@ -432,6 +444,87 @@ export async function commitLedgerTransaction(
               ${posting.sequence}
             )
           `;
+        }
+
+        if (
+          input.command.type === "expense" &&
+          input.command.sourceKind === "card" &&
+          input.command.installmentCount !== undefined &&
+          input.command.firstInstallmentDate !== undefined
+        ) {
+          const planId = randomUUID();
+          await tx`
+            insert into app_private.installment_plans (
+              id, user_id, purchase_transaction_id, card_account_id,
+              purchase_total, installment_count, recognition_policy
+            ) values (
+              ${planId}::uuid,
+              ${input.userId}::uuid,
+              ${transactionId}::uuid,
+              ${input.command.sourceAccountId}::uuid,
+              ${input.command.amount}::numeric,
+              ${input.command.installmentCount},
+              'full_at_purchase'
+            )
+          `;
+          for (
+            let installmentNumber = 1;
+            installmentNumber <= input.command.installmentCount;
+            installmentNumber += 1
+          ) {
+            await tx`
+              insert into app_private.installment_items (
+                id, user_id, plan_id, sequence, due_date,
+                cash_flow_amount, status
+              ) values (
+                ${randomUUID()}::uuid,
+                ${input.userId}::uuid,
+                ${planId}::uuid,
+                ${installmentNumber}::smallint,
+                (${input.command.firstInstallmentDate}::date
+                  + pg_catalog.make_interval(months => ${installmentNumber} - 1))::date,
+                case
+                  when ${installmentNumber} = ${input.command.installmentCount}
+                    then (${input.command.amount}::numeric
+                      - trunc(${input.command.amount}::numeric / ${input.command.installmentCount}, 4)
+                        * (${input.command.installmentCount} - 1))::numeric(19,4)
+                  else trunc(${input.command.amount}::numeric / ${input.command.installmentCount}, 4)::numeric(19,4)
+                end,
+                'scheduled'
+              )
+            `;
+          }
+        }
+
+        if (input.command.type === "card_payment") {
+          for (const allocation of input.command.statementAllocations ?? []) {
+            const updated = await tx`
+              update app_private.credit_card_statements
+                 set paid_amount = paid_amount + ${allocation.amount}::numeric,
+                     status = case
+                       when paid_amount + ${allocation.amount}::numeric = closing_balance
+                         then 'paid'
+                       else 'partially_paid'
+                     end
+               where user_id = ${input.userId}::uuid
+                 and id = ${allocation.statementId}::uuid
+                 and card_account_id = ${input.command.cardAccountId}::uuid
+                 and paid_amount + ${allocation.amount}::numeric <= closing_balance
+              returning id
+            `;
+            if (!updated[0]) throw new StatementAllocationError();
+            await tx`
+              insert into app_private.statement_payments (
+                id, user_id, statement_id, transaction_id, amount
+              ) values (
+                ${randomUUID()}::uuid,
+                ${input.userId}::uuid,
+                ${allocation.statementId}::uuid,
+                ${transactionId}::uuid,
+                ${allocation.amount}::numeric
+              )
+            `;
+          }
         }
 
         for (const link of preview.links) {

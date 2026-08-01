@@ -206,6 +206,22 @@ function buildNonRevisionPlan(
   switch (command.type) {
     case "expense": {
       primaryAmount = assertPositiveAmount(command.amount, command.currency);
+      const hasInstallmentFields =
+        command.installmentCount !== undefined ||
+        command.firstInstallmentDate !== undefined;
+      if (
+        hasInstallmentFields &&
+        (command.sourceKind !== "card" ||
+          !Number.isSafeInteger(command.installmentCount) ||
+          (command.installmentCount ?? 0) < 2 ||
+          (command.installmentCount ?? 0) > 60 ||
+          !/^\d{4}-\d{2}-\d{2}$/u.test(command.firstInstallmentDate ?? ""))
+      ) {
+        throw new LedgerInvariantError(
+          "invalid_installment_plan",
+          "Card installments require a count from 2 to 60 and a first due date.",
+        );
+      }
       pushPosting(plan, {
         ledgerRole: "expense",
         side: "debit",
@@ -283,6 +299,26 @@ function buildNonRevisionPlan(
     }
     case "card_payment": {
       primaryAmount = assertPositiveAmount(command.amount, command.currency);
+      let allocated = Money.zero(command.currency);
+      const statementIds = new Set<string>();
+      for (const allocation of command.statementAllocations ?? []) {
+        if (statementIds.has(allocation.statementId)) {
+          throw new LedgerInvariantError(
+            "duplicate_statement_allocation",
+            "A card statement can be allocated only once per payment.",
+          );
+        }
+        statementIds.add(allocation.statementId);
+        allocated = allocated.add(
+          assertPositiveAmount(allocation.amount, command.currency),
+        );
+      }
+      if (allocated.compare(primaryAmount) > 0) {
+        throw new LedgerInvariantError(
+          "statement_allocation_exceeded",
+          "Statement allocations cannot exceed the card payment.",
+        );
+      }
       pushPosting(plan, {
         ledgerRole: "card_liability",
         financialAccountId: command.cardAccountId,

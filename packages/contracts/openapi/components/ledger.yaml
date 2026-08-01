@@ -62,6 +62,8 @@ ExpenseCommand:
         sourceAccountId: { $ref: "#/Uuid" }
         sourceKind: { enum: [bank, cash, card] }
         categoryId: { $ref: "#/Uuid" }
+        installmentCount: { type: integer, minimum: 2, maximum: 60 }
+        firstInstallmentDate: { type: string, format: date }
   unevaluatedProperties: false
 
 IncomeCommand:
@@ -105,7 +107,19 @@ CardPaymentCommand:
         amount: { $ref: "#/PositiveMoneyString" }
         bankAccountId: { $ref: "#/Uuid" }
         cardAccountId: { $ref: "#/Uuid" }
+        statementAllocations:
+          type: array
+          maxItems: 24
+          items: { $ref: "#/StatementAllocation" }
   unevaluatedProperties: false
+
+StatementAllocation:
+  type: object
+  additionalProperties: false
+  required: [statementId, amount]
+  properties:
+    statementId: { $ref: "#/Uuid" }
+    amount: { $ref: "#/PositiveMoneyString" }
 
 CashbackRefundCommand:
   allOf:
