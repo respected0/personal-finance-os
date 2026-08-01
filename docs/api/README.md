@@ -1,9 +1,9 @@
-# Foundation API contract
+# API contract
 
 The authoritative REST contract starts at
-`packages/contracts/openapi/openapi.yaml`. It is OpenAPI 3.1 and exposes only
-the M0 health surface. Financial endpoints remain absent until their owning
-backlog tasks begin.
+`packages/contracts/openapi/openapi.yaml`. It is OpenAPI 3.1. M0 owns the
+health surface; P0-A0 adds the typed transaction preview/commit and
+reversal/revision command contracts.
 
 ## Commands
 
@@ -28,3 +28,14 @@ immutable Docker digest and rejects breaking changes relative to `main`.
   numbers.
 - Dates are ISO 8601 and identifiers are UUIDs.
 - Provider access/refresh credentials are not part of the public contract.
+- Financial requests contain typed commands only. They never contain
+  `user_id`, ledger postings, trusted outstanding/eligibility values, cost
+  basis, realization state or another server-derived invariant input.
+- Preview and commit use the same production ledger engine. Preview writes
+  nothing; commit recomputes server-side and returns the actual preview hash,
+  posting summary and effects.
+- Transaction commits require AAL2 and a UUID `Idempotency-Key`; same payload
+  replay returns the stored result, while a different payload returns
+  `idempotency_conflict`.
+- Void/revise public inputs carry only the reason and optional replacement
+  command. The server reads original postings and produces the exact reversal.

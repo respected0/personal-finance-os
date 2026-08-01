@@ -1,0 +1,378 @@
+CurrencyCode:
+  type: string
+  pattern: "^[A-Z]{3}$"
+  examples:
+    - TRY
+
+PositiveMoneyString:
+  type: string
+  pattern: "^(?:0|[1-9][0-9]{0,14})\\.[0-9]{1,4}$"
+  not:
+    pattern: "^0\\.0+$"
+  examples:
+    - "427.50"
+
+NonNegativeMoneyString:
+  type: string
+  pattern: "^(?:0|[1-9][0-9]{0,14})\\.[0-9]{1,4}$"
+  examples:
+    - "0.00"
+
+PositiveDecimalString:
+  type: string
+  pattern: "^(?:0|[1-9][0-9]*)(?:\\.[0-9]{1,12})$"
+  not:
+    pattern: "^0(?:\\.0+)?$"
+  examples:
+    - "1.3100000000"
+
+Uuid:
+  type: string
+  format: uuid
+
+BaseCommand:
+  type: object
+  required:
+    - type
+    - currency
+    - occurredAt
+    - economicDate
+  properties:
+    type:
+      type: string
+    currency:
+      $ref: "#/CurrencyCode"
+    occurredAt:
+      type: string
+      format: date-time
+    economicDate:
+      type: string
+      format: date
+    fxRate:
+      $ref: "#/PositiveDecimalString"
+
+ExpenseCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required: [type, amount, sourceAccountId, sourceKind, categoryId]
+      properties:
+        type: { const: expense }
+        amount: { $ref: "#/PositiveMoneyString" }
+        sourceAccountId: { $ref: "#/Uuid" }
+        sourceKind: { enum: [bank, cash, card] }
+        categoryId: { $ref: "#/Uuid" }
+  unevaluatedProperties: false
+
+IncomeCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required:
+        [type, amount, targetAccountId, targetKind, categoryId, incomeClass]
+      properties:
+        type: { const: income }
+        amount: { $ref: "#/PositiveMoneyString" }
+        targetAccountId: { $ref: "#/Uuid" }
+        targetKind: { enum: [bank, cash] }
+        categoryId: { $ref: "#/Uuid" }
+        incomeClass: { const: normal }
+  unevaluatedProperties: false
+
+TransferCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required:
+        [type, amount, sourceAccountId, sourceKind, targetAccountId, targetKind]
+      properties:
+        type: { const: transfer }
+        amount: { $ref: "#/PositiveMoneyString" }
+        sourceAccountId: { $ref: "#/Uuid" }
+        sourceKind: { enum: [bank, cash] }
+        targetAccountId: { $ref: "#/Uuid" }
+        targetKind: { enum: [bank, cash] }
+        feeAmount: { $ref: "#/PositiveMoneyString" }
+  unevaluatedProperties: false
+
+CardPaymentCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required: [type, amount, bankAccountId, cardAccountId]
+      properties:
+        type: { const: card_payment }
+        amount: { $ref: "#/PositiveMoneyString" }
+        bankAccountId: { $ref: "#/Uuid" }
+        cardAccountId: { $ref: "#/Uuid" }
+  unevaluatedProperties: false
+
+CashbackRefundCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required:
+        [type, amount, targetAccountId, targetKind, relatedTransactionId]
+      properties:
+        type: { const: cashback_refund }
+        amount: { $ref: "#/PositiveMoneyString" }
+        targetAccountId: { $ref: "#/Uuid" }
+        targetKind: { enum: [bank, cash, card] }
+        relatedTransactionId: { $ref: "#/Uuid" }
+        subscriptionId: { $ref: "#/Uuid" }
+  unevaluatedProperties: false
+
+SharedExpenseShare:
+  type: object
+  additionalProperties: false
+  required: [personId, amount]
+  properties:
+    personId: { $ref: "#/Uuid" }
+    amount: { $ref: "#/PositiveMoneyString" }
+
+SharedExpenseCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required:
+        [
+          type,
+          totalAmount,
+          ownerShare,
+          shares,
+          paymentAccountId,
+          paymentSourceKind,
+        ]
+      properties:
+        type: { const: shared_expense }
+        totalAmount: { $ref: "#/PositiveMoneyString" }
+        ownerShare: { $ref: "#/NonNegativeMoneyString" }
+        shares:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: "#/SharedExpenseShare" }
+        paymentAccountId: { $ref: "#/Uuid" }
+        paymentSourceKind: { enum: [bank, cash, card] }
+  unevaluatedProperties: false
+
+ReceivableSettlementCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required: [type, amount, receivableId, targetAccountId, targetKind]
+      properties:
+        type: { const: receivable_settlement }
+        amount: { $ref: "#/PositiveMoneyString" }
+        receivableId: { $ref: "#/Uuid" }
+        targetAccountId: { $ref: "#/Uuid" }
+        targetKind: { enum: [bank, cash] }
+  unevaluatedProperties: false
+
+ExpectedRealizationCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required:
+        [
+          type,
+          amount,
+          expectedPaymentId,
+          targetAccountId,
+          targetKind,
+          incomeClass,
+        ]
+      properties:
+        type: { const: expected_realization }
+        amount: { $ref: "#/PositiveMoneyString" }
+        expectedPaymentId: { $ref: "#/Uuid" }
+        targetAccountId: { $ref: "#/Uuid" }
+        targetKind: { enum: [bank, cash] }
+        incomeClass: { const: normal }
+  unevaluatedProperties: false
+
+InvestmentBuyCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required:
+        [type, cashAccountId, instrumentId, quantity, unitPrice, feeAmount]
+      properties:
+        type: { const: investment_buy }
+        cashAccountId: { $ref: "#/Uuid" }
+        instrumentId: { $ref: "#/Uuid" }
+        quantity: { $ref: "#/PositiveDecimalString" }
+        unitPrice: { $ref: "#/PositiveDecimalString" }
+        feeAmount: { $ref: "#/NonNegativeMoneyString" }
+  unevaluatedProperties: false
+
+InvestmentSellCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required:
+        [type, cashAccountId, instrumentId, quantity, unitPrice, feeAmount]
+      properties:
+        type: { const: investment_sell }
+        cashAccountId: { $ref: "#/Uuid" }
+        instrumentId: { $ref: "#/Uuid" }
+        quantity: { $ref: "#/PositiveDecimalString" }
+        unitPrice: { $ref: "#/PositiveDecimalString" }
+        feeAmount: { $ref: "#/NonNegativeMoneyString" }
+  unevaluatedProperties: false
+
+OpeningBalanceCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required: [type, amount, accountId, accountKind]
+      properties:
+        type: { const: opening_balance }
+        amount: { $ref: "#/PositiveMoneyString" }
+        accountId: { $ref: "#/Uuid" }
+        accountKind: { enum: [bank, cash, card] }
+  unevaluatedProperties: false
+
+BalanceAdjustmentCommand:
+  allOf:
+    - $ref: "#/BaseCommand"
+    - type: object
+      required: [type, amount, direction, accountId, accountKind, reason]
+      properties:
+        type: { const: balance_adjustment }
+        amount: { $ref: "#/PositiveMoneyString" }
+        direction: { enum: [increase, decrease] }
+        accountId: { $ref: "#/Uuid" }
+        accountKind: { enum: [bank, cash, card] }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+        reconciliationId: { $ref: "#/Uuid" }
+  unevaluatedProperties: false
+
+VoidRequest:
+  type: object
+  additionalProperties: false
+  required: [reason]
+  properties:
+    reason: { type: string, minLength: 1, maxLength: 500 }
+
+NonRevisionTransactionCommand:
+  oneOf:
+    - $ref: "#/ExpenseCommand"
+    - $ref: "#/IncomeCommand"
+    - $ref: "#/TransferCommand"
+    - $ref: "#/CardPaymentCommand"
+    - $ref: "#/CashbackRefundCommand"
+    - $ref: "#/SharedExpenseCommand"
+    - $ref: "#/ReceivableSettlementCommand"
+    - $ref: "#/ExpectedRealizationCommand"
+    - $ref: "#/InvestmentBuyCommand"
+    - $ref: "#/InvestmentSellCommand"
+    - $ref: "#/OpeningBalanceCommand"
+    - $ref: "#/BalanceAdjustmentCommand"
+  discriminator:
+    propertyName: type
+
+ReviseRequest:
+  type: object
+  additionalProperties: false
+  required: [reason, replacement]
+  properties:
+    reason: { type: string, minLength: 1, maxLength: 500 }
+    replacement: { $ref: "#/NonRevisionTransactionCommand" }
+
+TransactionCommand:
+  $ref: "#/NonRevisionTransactionCommand"
+
+PlannedPosting:
+  type: object
+  additionalProperties: false
+  required:
+    [sequence, ledgerRole, side, amountOriginal, currency, fxRate, amountBase]
+  properties:
+    sequence: { type: integer, minimum: 1 }
+    ledgerRole:
+      enum:
+        [
+          bank_asset,
+          cash_asset,
+          card_liability,
+          expense,
+          income,
+          receivable_asset,
+          investment_asset,
+          opening_equity,
+          adjustment_equity,
+          realized_gain,
+          realized_loss,
+          fee_expense,
+          fx_rounding,
+        ]
+    financialAccountId: { $ref: "#/Uuid" }
+    side: { enum: [debit, credit] }
+    amountOriginal: { $ref: "#/PositiveMoneyString" }
+    currency: { $ref: "#/CurrencyCode" }
+    fxRate: { $ref: "#/PositiveDecimalString" }
+    amountBase: { $ref: "#/PositiveMoneyString" }
+
+FinancialEffects:
+  type: object
+  additionalProperties: false
+  required: [personalExpenseDelta, normalIncomeDelta, netWorthDelta]
+  properties:
+    personalExpenseDelta:
+      { type: string, pattern: "^-?(?:0|[1-9][0-9]{0,14})\\.[0-9]{1,4}$" }
+    normalIncomeDelta:
+      { type: string, pattern: "^-?(?:0|[1-9][0-9]{0,14})\\.[0-9]{1,4}$" }
+    netWorthDelta:
+      { type: string, pattern: "^-?(?:0|[1-9][0-9]{0,14})\\.[0-9]{1,4}$" }
+
+TransactionPreview:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      commandType,
+      primaryAmount,
+      currency,
+      postings,
+      effects,
+      engineVersion,
+      inputSchemaVersion,
+      previewHash,
+    ]
+  properties:
+    commandType: { type: string }
+    primaryAmount: { $ref: "#/PositiveMoneyString" }
+    currency: { $ref: "#/CurrencyCode" }
+    postings:
+      type: array
+      minItems: 2
+      items: { $ref: "#/PlannedPosting" }
+    effects: { $ref: "#/FinancialEffects" }
+    engineVersion: { type: string, const: ledger-1.0.0 }
+    inputSchemaVersion: { type: integer, const: 1 }
+    previewHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+
+TransactionCommitRequest:
+  type: object
+  additionalProperties: false
+  required: [command]
+  properties:
+    command: { $ref: "#/TransactionCommand" }
+    previewHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+
+TransactionCommitResponse:
+  type: object
+  additionalProperties: false
+  required:
+    [transactionId, replayed, previewHash, engineVersion, postings, effects]
+  properties:
+    transactionId: { $ref: "#/Uuid" }
+    replayed: { type: boolean }
+    previewHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+    engineVersion: { type: string, const: ledger-1.0.0 }
+    postings:
+      type: array
+      minItems: 2
+      items: { $ref: "#/PlannedPosting" }
+    effects: { $ref: "#/FinancialEffects" }

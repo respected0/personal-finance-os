@@ -1,0 +1,417 @@
+import { createHash, randomUUID } from "node:crypto";
+import {
+  canonicalCommandJson,
+  hashTransactionCommand,
+  previewTransaction,
+  resolveLedgerAccount,
+  SYSTEM_LEDGER_ROLES,
+  type LedgerChart,
+  type PlannedPosting,
+  type PostingPlan,
+  type TransactionCommand,
+} from "@personal-finance-os/domain";
+import postgres from "postgres";
+
+export type LedgerSql = ReturnType<typeof postgres>;
+
+export interface CommitTransactionInput {
+  readonly userId: string;
+  readonly idempotencyKey: string;
+  readonly requestId: string;
+  readonly actorSessionId?: string;
+  readonly command: TransactionCommand;
+  readonly previewHash?: string;
+}
+
+export interface CommitTransactionResponse {
+  readonly transactionId: string;
+  readonly replayed: boolean;
+  readonly previewHash: string;
+  readonly engineVersion: string;
+  readonly postings: readonly PlannedPosting[];
+  readonly effects: PostingPlan["effects"];
+}
+
+export class IdempotencyConflictError extends Error {
+  readonly code = "idempotency_conflict";
+  readonly status = 409;
+
+  constructor() {
+    super("The idempotency key was already used with a different payload.");
+    this.name = "IdempotencyConflictError";
+  }
+}
+
+export class SerializationRetryExhaustedError extends Error {
+  readonly code = "serialization_retry_exhausted";
+  readonly status = 503;
+
+  constructor() {
+    super("The serializable transaction retry limit was exhausted.");
+    this.name = "SerializationRetryExhaustedError";
+  }
+}
+
+export function createLedgerSql(
+  databaseUrl: string,
+  options: { readonly max?: number } = {},
+): LedgerSql {
+  return postgres(databaseUrl, {
+    max: options.max ?? 5,
+    prepare: true,
+    transform: { undefined: null },
+  });
+}
+
+function isRetryableDatabaseError(error: unknown): boolean {
+  if (!error || typeof error !== "object" || !("code" in error)) {
+    return false;
+  }
+  return ["40001", "40P01", "23505"].includes(String(error.code));
+}
+
+function waitBeforeRetry(attempt: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 10 * 2 ** (attempt - 1)));
+}
+
+function eventMetadata(
+  transactionId: string,
+  plan: PostingPlan,
+): Record<string, unknown> {
+  return {
+    engine_version: plan.engineVersion,
+    event_type: plan.commandType,
+    input_schema_version: plan.inputSchemaVersion,
+    status: "posted",
+    transaction_id: transactionId,
+  };
+}
+
+export async function provisionSystemLedgerAccounts(
+  sql: LedgerSql,
+  userId: string,
+): Promise<LedgerChart> {
+  await sql`select app_private.provision_system_ledger_accounts(${userId}::uuid)`;
+  const rows = await sql<
+    { readonly id: string; readonly system_role: string }[]
+  >`
+    select id::text, system_role
+      from app_private.ledger_accounts
+     where user_id = ${userId}::uuid
+     order by system_role
+  `;
+  const entries = rows.map((row) => [row.system_role, row.id]);
+  const chart = Object.fromEntries(entries) as LedgerChart;
+  for (const role of SYSTEM_LEDGER_ROLES) {
+    resolveLedgerAccount(chart, role);
+  }
+  return chart;
+}
+
+export async function commitLedgerTransaction(
+  sql: LedgerSql,
+  input: CommitTransactionInput,
+): Promise<CommitTransactionResponse> {
+  const requestHash = hashTransactionCommand(input.command);
+  const commandJson = canonicalCommandJson(input.command);
+  const preview = previewTransaction(input.command);
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await sql.begin("isolation level serializable", async (tx) => {
+        const existingRows = await tx<
+          {
+            readonly request_hash: string;
+            readonly response_body: CommitTransactionResponse | null;
+            readonly status: string;
+          }[]
+        >`
+          select
+            encode(request_hash, 'hex') as request_hash,
+            response_body,
+            status
+          from app_private.idempotency_keys
+          where user_id = ${input.userId}::uuid
+            and key = ${input.idempotencyKey}
+          for update
+        `;
+        const existing = existingRows[0];
+        if (existing) {
+          if (existing.request_hash !== requestHash) {
+            throw new IdempotencyConflictError();
+          }
+          if (existing.status === "completed" && existing.response_body) {
+            return { ...existing.response_body, replayed: true };
+          }
+          throw new SerializationRetryExhaustedError();
+        }
+
+        await tx`
+          insert into app_private.idempotency_keys (
+            user_id,
+            key,
+            request_hash,
+            status,
+            expires_at
+          ) values (
+            ${input.userId}::uuid,
+            ${input.idempotencyKey},
+            decode(${requestHash}, 'hex'),
+            'processing',
+            now() + interval '24 hours'
+          )
+        `;
+
+        await tx`
+          select app_private.provision_system_ledger_accounts(${input.userId}::uuid)
+        `;
+        const accountRows = await tx<
+          { readonly id: string; readonly system_role: string }[]
+        >`
+          select id::text, system_role
+            from app_private.ledger_accounts
+           where user_id = ${input.userId}::uuid
+           order by system_role
+        `;
+        const chart = Object.fromEntries(
+          accountRows.map((row) => [row.system_role, row.id]),
+        ) as LedgerChart;
+        for (const role of SYSTEM_LEDGER_ROLES) {
+          resolveLedgerAccount(chart, role);
+        }
+
+        const transactionId = randomUUID();
+        const reversesTransactionId =
+          input.command.type === "void" || input.command.type === "revise"
+            ? input.command.originalTransactionId
+            : null;
+        let revisionGroupId: string = randomUUID();
+        if (reversesTransactionId) {
+          const originalRows = await tx<
+            { readonly revision_group_id: string }[]
+          >`
+            select revision_group_id::text
+              from app_private.transactions
+             where user_id = ${input.userId}::uuid
+               and id = ${reversesTransactionId}::uuid
+             for share
+          `;
+          const original = originalRows[0];
+          if (!original) {
+            throw new Error("Original transaction was not found.");
+          }
+          revisionGroupId = original.revision_group_id;
+        }
+
+        const categoryId =
+          input.command.type === "expense" || input.command.type === "income"
+            ? input.command.categoryId
+            : null;
+        await tx`
+          insert into app_private.transactions (
+            id,
+            user_id,
+            client_request_id,
+            event_type,
+            status,
+            occurred_at,
+            economic_date,
+            primary_amount,
+            primary_currency,
+            category_id,
+            engine_version,
+            input_schema_version,
+            input_json,
+            preview_hash,
+            revision_group_id,
+            reverses_transaction_id,
+            posted_at
+          ) values (
+            ${transactionId}::uuid,
+            ${input.userId}::uuid,
+            ${input.idempotencyKey}::uuid,
+            ${preview.commandType},
+            'draft',
+            ${input.command.occurredAt}::timestamptz,
+            ${input.command.economicDate}::date,
+            ${preview.primaryAmount}::numeric,
+            ${preview.currency},
+            ${categoryId}::uuid,
+            ${preview.engineVersion},
+            ${preview.inputSchemaVersion},
+            ${tx.json(JSON.parse(commandJson))},
+            ${preview.previewHash},
+            ${revisionGroupId}::uuid,
+            ${reversesTransactionId}::uuid,
+            null
+          )
+        `;
+
+        for (const posting of preview.postings) {
+          await tx`
+            insert into app_private.ledger_postings (
+              id,
+              user_id,
+              transaction_id,
+              ledger_account_id,
+              financial_account_id,
+              side,
+              amount_original,
+              currency,
+              fx_rate,
+              amount_base,
+              role,
+              sequence_no
+            ) values (
+              ${randomUUID()}::uuid,
+              ${input.userId}::uuid,
+              ${transactionId}::uuid,
+              ${resolveLedgerAccount(chart, posting.ledgerRole)}::uuid,
+              ${posting.financialAccountId ?? null}::uuid,
+              ${posting.side},
+              ${posting.amountOriginal}::numeric,
+              ${posting.currency},
+              ${posting.fxRate}::numeric,
+              ${posting.amountBase}::numeric,
+              ${posting.ledgerRole},
+              ${posting.sequence}
+            )
+          `;
+        }
+
+        for (const link of preview.links) {
+          await tx`
+            insert into app_private.transaction_links (
+              id,
+              user_id,
+              from_transaction_id,
+              to_transaction_id,
+              link_type,
+              allocated_amount
+            ) values (
+              ${randomUUID()}::uuid,
+              ${input.userId}::uuid,
+              ${transactionId}::uuid,
+              ${link.relatedTransactionId}::uuid,
+              ${link.linkType},
+              ${link.allocatedAmount ?? null}::numeric
+            )
+          `;
+        }
+
+        await tx`
+          update app_private.transactions
+             set status = 'posted',
+                 posted_at = now()
+           where user_id = ${input.userId}::uuid
+             and id = ${transactionId}::uuid
+             and status = 'draft'
+        `;
+
+        await tx`
+          select id
+            from auth.users
+           where id = ${input.userId}::uuid
+           for update
+        `;
+        const previousAuditRows = await tx<{ readonly event_hash: string }[]>`
+          select encode(event_hash, 'hex') as event_hash
+            from app_private.audit_events
+           where user_id = ${input.userId}::uuid
+           order by occurred_at desc, id desc
+           limit 1
+        `;
+        const previousAuditHash = previousAuditRows[0]?.event_hash ?? "";
+        const auditAfter = eventMetadata(transactionId, preview);
+        const auditHash = createHash("sha256")
+          .update(
+            `${previousAuditHash}|${input.requestId}|${JSON.stringify(auditAfter)}`,
+          )
+          .digest("hex");
+        await tx`
+          insert into app_private.audit_events (
+            id,
+            user_id,
+            entity_type,
+            entity_id,
+            action,
+            before_json,
+            after_json,
+            actor_session_id,
+            request_id,
+            prev_hash,
+            event_hash
+          ) values (
+            ${randomUUID()}::uuid,
+            ${input.userId}::uuid,
+            'transaction',
+            ${transactionId}::uuid,
+            'posted',
+            null,
+            ${tx.json(JSON.parse(JSON.stringify(auditAfter)))},
+            ${input.actorSessionId ?? null}::uuid,
+            ${input.requestId},
+            case when ${previousAuditHash} = '' then null else decode(${previousAuditHash}, 'hex') end,
+            decode(${auditHash}, 'hex')
+          )
+        `;
+
+        await tx`
+          insert into app_private.outbox_events (
+            id,
+            user_id,
+            aggregate_type,
+            aggregate_id,
+            event_type,
+            event_version,
+            schema_version,
+            payload
+          ) values (
+            ${randomUUID()}::uuid,
+            ${input.userId}::uuid,
+            'transaction',
+            ${transactionId}::uuid,
+            'transaction.posted',
+            1,
+            1,
+            ${tx.json(JSON.parse(JSON.stringify(auditAfter)))}
+          )
+        `;
+
+        const response: CommitTransactionResponse = {
+          transactionId,
+          replayed: false,
+          previewHash: preview.previewHash,
+          engineVersion: preview.engineVersion,
+          postings: preview.postings,
+          effects: preview.effects,
+        };
+        await tx`
+          update app_private.idempotency_keys
+             set status = 'completed',
+                 response_code = 201,
+                 response_body = ${tx.json(JSON.parse(JSON.stringify(response)))},
+                 updated_at = now()
+           where user_id = ${input.userId}::uuid
+             and key = ${input.idempotencyKey}
+        `;
+        return response;
+      });
+    } catch (error) {
+      if (
+        error instanceof IdempotencyConflictError ||
+        error instanceof SerializationRetryExhaustedError
+      ) {
+        throw error;
+      }
+      if (!isRetryableDatabaseError(error)) {
+        throw error;
+      }
+      if (attempt < 3) {
+        await waitBeforeRetry(attempt);
+      }
+    }
+  }
+
+  throw new SerializationRetryExhaustedError();
+}

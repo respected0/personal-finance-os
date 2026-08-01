@@ -45,11 +45,22 @@ jobs:
           set -o pipefail
           mkdir -p .tmp/ci
           pnpm db:smoke 2>&1 | tee .tmp/ci/migration-smoke.log
+      - name: Verify domain coverage and float boundary
+        run: |
+          set -o pipefail
+          pnpm test:ledger:coverage 2>&1 | tee .tmp/ci/ledger-coverage.log
+      - name: Verify ledger invariants and UAT rules
+        run: |
+          set -o pipefail
+          pnpm ledger:integration 2>&1 | tee .tmp/ci/ledger-acceptance.log
       - name: Upload migration smoke report
         if: ${{ always() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: migration-smoke-report
-          path: .tmp/ci/migration-smoke.log
+          path: |
+            .tmp/ci/migration-smoke.log
+            .tmp/ci/ledger-coverage.log
+            .tmp/ci/ledger-acceptance.log
           if-no-files-found: error
           retention-days: 14
