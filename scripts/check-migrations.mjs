@@ -10,6 +10,7 @@ const rootDirectory = process.cwd();
 const errors = [];
 const migrationDirectory = path.join(rootDirectory, "supabase", "migrations");
 const foundationMigrationName = "00000000000000_m0_foundation.sql";
+const rlsHarnessMigrationName = "00000000000001_m0_rls_harness.sql";
 
 async function read(relativePath) {
   return readFile(path.join(rootDirectory, relativePath), "utf8");
@@ -25,6 +26,9 @@ const migrationFiles = (await readdir(migrationDirectory))
 
 if (!migrationFiles.includes(foundationMigrationName)) {
   errors.push(`Eksik foundation migration: ${foundationMigrationName}.`);
+}
+if (!migrationFiles.includes(rlsHarnessMigrationName)) {
+  errors.push(`Eksik B008 RLS migration: ${rlsHarnessMigrationName}.`);
 }
 
 const versions = new Set();
@@ -62,6 +66,51 @@ for (const requiredPattern of [
       `Foundation migration zorunlu ${requiredPattern[1]} temelini içermiyor.`,
     );
   }
+}
+
+const rlsHarnessMigration = await read(
+  `supabase/migrations/${rlsHarnessMigrationName}`,
+);
+for (const [pattern, message] of [
+  [
+    /create\s+table\s+app_identity\.rls_probe_parents/i,
+    "B008 parent ownership probe eksik.",
+  ],
+  [
+    /foreign\s+key\s*\(user_id,\s*parent_id\)[\s\S]*references\s+app_identity\.rls_probe_parents\s*\(user_id,\s*id\)/i,
+    "B008 composite ownership FK eksik.",
+  ],
+  [
+    /alter\s+table\s+app_identity\.rls_probe_parents\s+enable\s+row\s+level\s+security/i,
+    "B008 parent RLS açık değil.",
+  ],
+  [
+    /alter\s+table\s+app_identity\.rls_probe_children\s+enable\s+row\s+level\s+security/i,
+    "B008 child RLS açık değil.",
+  ],
+  [
+    /to\s+authenticated[\s\S]*auth\.uid\(\)/i,
+    "B008 authenticated auth.uid() policy eksik.",
+  ],
+  [
+    /security\s+definer[\s\S]*set\s+search_path\s*=\s*pg_catalog,\s*app_identity/i,
+    "B008 SECURITY DEFINER sabit search_path kullanmıyor.",
+  ],
+  [
+    /revoke\s+all[\s\S]*create_rls_probe_parent\(uuid,\s*text\)[\s\S]*from\s+public,\s*anon,\s*service_role/i,
+    "B008 RPC geniş EXECUTE grant taşıyor.",
+  ],
+]) {
+  if (!pattern.test(rlsHarnessMigration)) {
+    errors.push(message);
+  }
+}
+
+const rpcSignature = rlsHarnessMigration.match(
+  /create\s+function\s+app_identity\.create_rls_probe_parent\s*\(([^)]*)\)/i,
+);
+if (!rpcSignature || /user_id/i.test(rpcSignature[1])) {
+  errors.push("B008 RPC istemciden user_id parametresi alamaz.");
 }
 
 const seed = await read("supabase/seed.sql");
@@ -104,13 +153,7 @@ if (dbManifest.devDependencies?.["drizzle-kit"] !== "0.31.10") {
   errors.push("drizzle-kit devDependency tam 0.31.10 olmalı.");
 }
 
-const disallowedDependencies = [
-  "@supabase/ssr",
-  "@supabase/supabase-js",
-  "drizzle-orm",
-  "postgres",
-  "testcontainers",
-];
+const disallowedDependencies = ["drizzle-orm", "postgres", "testcontainers"];
 for (const manifest of [rootManifest, dbManifest]) {
   for (const field of [
     "dependencies",

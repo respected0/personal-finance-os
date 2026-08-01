@@ -27,18 +27,21 @@
     "check:ci-policy": "node scripts/check-ci-policy.mjs",
     "ci:workflow-lint": "node scripts/ci/actionlint.mjs",
     "security:secret-scan": "node scripts/ci/gitleaks.mjs",
+    "security:runtime-credentials": "node scripts/security/check-runtime-credentials.mjs",
     "auth:storage": "node scripts/security/check-browser-auth-storage.mjs",
     "auth:integration": "pnpm --filter @personal-finance-os/web test:auth:integration",
     "auth:browser:install": "pnpm --filter @personal-finance-os/web exec playwright install --with-deps chromium",
     "auth:browser": "pnpm --filter @personal-finance-os/web build && pnpm --filter @personal-finance-os/web test:auth:browser",
     "auth:check": "pnpm auth:storage && pnpm auth:integration && pnpm auth:browser",
+    "rls:integration": "pnpm --filter @personal-finance-os/test-kit build && pnpm --filter @personal-finance-os/db test:rls",
+    "rls:check": "pnpm security:runtime-credentials && pnpm rls:integration",
     "db:start": "node scripts/db/start.mjs",
     "db:status": "node scripts/db/status.mjs",
     "db:reset": "node scripts/db/reset.mjs",
     "db:checksum": "node scripts/db/checksum.mjs",
     "db:stop": "node scripts/db/stop.mjs",
     "db:smoke": "node scripts/db/smoke.mjs",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build && pnpm check:adrs && pnpm check:threat-model && pnpm check:boundaries && pnpm check:versions && pnpm check:migrations && pnpm check:ci-policy && pnpm contracts:check && pnpm auth:storage"
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build && pnpm check:adrs && pnpm check:threat-model && pnpm check:boundaries && pnpm check:versions && pnpm check:migrations && pnpm check:ci-policy && pnpm contracts:check && pnpm auth:storage && pnpm security:runtime-credentials"
   },
   "devDependencies": {
     "@redocly/cli": "2.41.1",

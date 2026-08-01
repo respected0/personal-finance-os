@@ -15,9 +15,11 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "test:rls": "node tests/rls/local-rls.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "2.111.0",
     "drizzle-kit": "0.31.10"
   }
 }
