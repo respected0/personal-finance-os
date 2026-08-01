@@ -162,6 +162,60 @@ export const transactionHistoryPageSchema = z
   })
   .strict();
 
+export const transactionEntryDraftSchema = z
+  .object({
+    type: z.enum(["expense", "income", "transfer"]),
+    amountInput: z.string().trim().min(1).max(40),
+    date: isoDateSchema,
+    sourceAccountId: z.string().optional().default(""),
+    targetAccountId: z.string().optional().default(""),
+    categoryId: z.string().optional().default(""),
+    feeInput: z.string().trim().max(40).optional().default(""),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      (value.type === "expense" || value.type === "transfer") &&
+      !uuidSchema.safeParse(value.sourceAccountId).success
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["sourceAccountId"],
+        message: "Kaynak hesap seçin.",
+      });
+    }
+    if (
+      (value.type === "income" || value.type === "transfer") &&
+      !uuidSchema.safeParse(value.targetAccountId).success
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["targetAccountId"],
+        message: "Hedef hesap seçin.",
+      });
+    }
+    if (
+      (value.type === "expense" || value.type === "income") &&
+      !uuidSchema.safeParse(value.categoryId).success
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["categoryId"],
+        message: "Kategori seçin.",
+      });
+    }
+    if (
+      value.type === "transfer" &&
+      value.sourceAccountId === value.targetAccountId
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["targetAccountId"],
+        message: "Hedef hesap kaynak hesaptan farklı olmalı.",
+      });
+    }
+  });
+
 export type InstitutionCreate = z.infer<typeof institutionCreateSchema>;
 export type FinancialAccountCreate = z.infer<
   typeof financialAccountCreateSchema
@@ -170,3 +224,4 @@ export type OpeningBalanceRequest = z.infer<typeof openingBalanceRequestSchema>;
 export type TransactionHistoryQuery = z.infer<
   typeof transactionHistoryQuerySchema
 >;
+export type TransactionEntryDraft = z.infer<typeof transactionEntryDraftSchema>;

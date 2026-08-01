@@ -3,6 +3,7 @@ import {
   financialAccountCreateSchema,
   institutionCreateSchema,
   openingBalanceRequestSchema,
+  transactionEntryDraftSchema,
   transactionHistoryQuerySchema,
 } from "../src/daily-core.js";
 
@@ -29,6 +30,32 @@ describe("P0-A1 daily core contracts", () => {
         accountType: "bank",
         currency: "TRY",
         openingDate: "2026-08-01",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates dynamic entry fields without accepting an owner", () => {
+    expect(
+      transactionEntryDraftSchema.safeParse({
+        type: "expense",
+        amountInput: "427,50",
+        date: "2026-08-01",
+        sourceAccountId: "11111111-1111-4111-8111-111111111111",
+        targetAccountId: "",
+        categoryId: "22222222-2222-4222-8222-222222222222",
+        feeInput: "",
+      }).success,
+    ).toBe(true);
+    expect(
+      transactionEntryDraftSchema.safeParse({
+        type: "transfer",
+        amountInput: "10,00",
+        date: "2026-08-01",
+        sourceAccountId: "11111111-1111-4111-8111-111111111111",
+        targetAccountId: "11111111-1111-4111-8111-111111111111",
+        categoryId: "",
+        feeInput: "0,50",
+        userId: "33333333-3333-4333-8333-333333333333",
       }).success,
     ).toBe(false);
   });
