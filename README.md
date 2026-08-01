@@ -11,9 +11,10 @@ Bu repository, Kişisel Finans İşletim Sistemi’nin M0 Foundation ilk impleme
 - B005: OpenAPI 3.1, problem details ve breaking-diff sözleşmesi
 - B006: threat model, veri sınıfları ve kontrol sahipliği
 - B007: Supabase Auth invite-only, TOTP AAL2 ve BFF cookie temeli
+- B008: RLS default-deny, cross-user ve runtime credential test harness’ı
 - B009: request_id taşıyan structured redacted logging
 
-B008 ve B010 ile P0-A, P0-B ve RC özellikleri bu dilimde
+B010 ile P0-A, P0-B ve RC özellikleri bu dilimde
 uygulanmamıştır.
 
 ## Gereksinimler
@@ -27,6 +28,7 @@ uygulanmamıştır.
 pnpm install --frozen-lockfile
 pnpm check
 pnpm auth:check
+pnpm rls:check
 ```
 
 ## Local Database

@@ -4,8 +4,8 @@ project_id = "personal-finance-os"
 [api]
 enabled = true
 port = 54321
-schemas = ["public", "graphql_public"]
-extra_search_path = ["public", "extensions"]
+schemas = ["public", "graphql_public", "app_identity"]
+extra_search_path = ["public", "extensions", "app_identity"]
 max_rows = 1000
 
 [api.tls]

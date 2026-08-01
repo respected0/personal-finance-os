@@ -8,6 +8,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./auth/two-user-context": {
+      "types": "./dist/auth/two-user-context.d.ts",
+      "import": "./dist/auth/two-user-context.js",
+      "default": "./dist/auth/two-user-context.js"
     }
   },
   "files": [

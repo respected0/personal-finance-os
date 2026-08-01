@@ -78,6 +78,9 @@ importers:
 
   packages/db:
     devDependencies:
+      '@supabase/supabase-js':
+        specifier: 2.111.0
+        version: 2.111.0
       drizzle-kit:
         specifier: 0.31.10
         version: 0.31.10

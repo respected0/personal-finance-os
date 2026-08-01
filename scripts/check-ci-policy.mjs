@@ -10,6 +10,7 @@ const workflows = new Map([
       "quality / unit",
       "contracts / openapi",
       "auth / integration",
+      "security / rls",
     ],
   ],
   [".github/workflows/security.yml", ["security / secret-scan"]],
@@ -88,5 +89,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  "CI policy doğrulaması başarılı: 8 required check, dar izinler, immutable action referansları.",
+  "CI policy doğrulaması başarılı: 9 required check, dar izinler, immutable action referansları.",
 );
