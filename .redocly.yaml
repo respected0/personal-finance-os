@@ -1,0 +1,14 @@
+apis:
+  foundation@v1:
+    root: packages/contracts/openapi/openapi.yaml
+
+extends:
+  - recommended-strict
+
+rules:
+  no-empty-servers: error
+  no-server-example.com: error
+  # M0 intentionally defines shared date/money primitives before financial paths.
+  no-unused-components: off
+  operation-operationId-unique: error
+  security-defined: error

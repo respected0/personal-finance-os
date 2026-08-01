@@ -41,7 +41,8 @@ jobs:
         if: ${{ inputs.negative_canary }}
         run: |
           mkdir -p .tmp/ci
-          printf '%s\n' 'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE' 'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY' > .tmp/ci/secret-canary.txt
+          printf 'AWS_ACCESS_KEY_ID=AKIA%s\n' 'QWERTYUIOPASDFGH' > ci-secret-canary.txt
+          printf 'AWS_SECRET_ACCESS_KEY=Zx8vQ2mL%s\n' 'p7Nc4Rb9Ty6Uk3Jh5Gf1Ds0Aa2Ww4Ee6' >> ci-secret-canary.txt
       - name: Scan repository
         env:
           CI_GITLEAKS_NO_GIT: ${{ inputs.negative_canary && '1' || '0' }}

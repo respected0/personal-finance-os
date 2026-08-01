@@ -30,7 +30,7 @@ describe("B003 CI policy", () => {
     expect(combined).not.toMatch(/secrets\.|service.role|production.secret/i);
   });
 
-  test("defines all six stable required check names", async () => {
+  test("defines all stable required check names", async () => {
     const workflows = await Promise.all(
       workflowFiles.map((file) => readFile(file, "utf8")),
     );
@@ -40,6 +40,7 @@ describe("B003 CI policy", () => {
       "quality / lint",
       "quality / typecheck",
       "quality / unit",
+      "contracts / openapi",
       "security / secret-scan",
       "database / migration-smoke",
     ];

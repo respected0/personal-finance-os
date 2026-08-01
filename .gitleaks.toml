@@ -2,3 +2,13 @@ title = "Personal Finance OS secret scanning policy"
 
 [extend]
 useDefault = true
+
+[allowlist]
+description = "Generated and dependency directories are outside repository source scope"
+paths = [
+  '''(^|/)\.git/''',
+  '''(^|/)\.next/''',
+  '''(^|/)\.tmp/''',
+  '''(^|/)dist/''',
+  '''(^|/)node_modules/''',
+]

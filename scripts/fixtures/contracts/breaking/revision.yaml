@@ -1,0 +1,26 @@
+openapi: 3.1.0
+info:
+  title: Breaking fixture revision
+  version: 1.1.0
+paths:
+  /fixture:
+    get:
+      operationId: getFixture
+      parameters:
+        - name: required_mode
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Fixture response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                properties:
+                  id:
+                    type: integer

@@ -118,3 +118,24 @@ jobs:
           printf '%s\n' 'import { expect, test } from "vitest";' 'test("controlled failure", () => expect(true).toBe(false));' > scripts/__tests__/.ci-unit-canary.test.js
       - name: Unit tests
         run: pnpm test:unit
+
+  contracts:
+    name: contracts / openapi
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - name: Install exact pnpm
+        run: npm install --global pnpm@11.18.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate OpenAPI contract
+        run: pnpm contracts:check

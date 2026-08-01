@@ -1,0 +1,20 @@
+openapi: 3.1.0
+info:
+  title: Breaking fixture base
+  version: 1.0.0
+paths:
+  /fixture:
+    get:
+      operationId: getFixture
+      responses:
+        "200":
+          description: Fixture response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                properties:
+                  id:
+                    type: string
