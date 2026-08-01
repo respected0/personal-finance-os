@@ -7,7 +7,10 @@
 - Required GitHub CI: **PENDING**
 - Evidence date: `2026-08-01`
 - Evaluated branch: `feat/p0-a0-ledger-kernel`
-- Evaluated implementation commit: populated after the implementation commit
+- Evaluated implementation commit:
+  `374899a92fa0aa752ed1ad55a4d871415bbae1d5`
+- Pull request: [#8](https://github.com/respected0/personal-finance-os/pull/8)
+  (**DRAFT / OPEN**; required checks in progress)
 - Binding scope: `B011`–`B024`, `INV-01`–`INV-10`, UAT financial rules
   engine+DB `16/16`, and JavaScript financial float boundary `0`
 
