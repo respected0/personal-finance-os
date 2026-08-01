@@ -19,13 +19,16 @@
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:versions": "node scripts/check-versions.mjs",
     "check:migrations": "node scripts/check-migrations.mjs",
+    "check:ci-policy": "node scripts/check-ci-policy.mjs",
+    "ci:workflow-lint": "node scripts/ci/actionlint.mjs",
+    "security:secret-scan": "node scripts/ci/gitleaks.mjs",
     "db:start": "node scripts/db/start.mjs",
     "db:status": "node scripts/db/status.mjs",
     "db:reset": "node scripts/db/reset.mjs",
     "db:checksum": "node scripts/db/checksum.mjs",
     "db:stop": "node scripts/db/stop.mjs",
     "db:smoke": "node scripts/db/smoke.mjs",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build && pnpm check:adrs && pnpm check:threat-model && pnpm check:boundaries && pnpm check:versions && pnpm check:migrations"
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build && pnpm check:adrs && pnpm check:threat-model && pnpm check:boundaries && pnpm check:versions && pnpm check:migrations && pnpm check:ci-policy"
   },
   "devDependencies": {
     "@typescript/native": "npm:typescript@7.0.2",

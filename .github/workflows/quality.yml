@@ -1,0 +1,116 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      fail_gate:
+        description: Controlled negative gate used only for B003 evidence
+        required: false
+        default: none
+        type: choice
+        options:
+          - none
+          - format
+          - lint
+          - typecheck
+          - unit
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    name: quality / format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - name: Install exact pnpm
+        run: npm install --global pnpm@11.18.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create controlled format failure
+        if: ${{ inputs.fail_gate == 'format' }}
+        run: echo '{"intentionally":"unformatted","value":[1,2,3]}' > .ci-format-canary.json
+      - name: Validate workflows
+        run: pnpm ci:workflow-lint
+      - name: Check format
+        run: pnpm format:check
+
+  lint:
+    name: quality / lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - name: Install exact pnpm
+        run: npm install --global pnpm@11.18.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create controlled lint failure
+        if: ${{ inputs.fail_gate == 'lint' }}
+        run: echo 'const = broken;' > scripts/.ci-lint-canary.mjs
+      - name: Lint
+        run: pnpm lint
+
+  typecheck:
+    name: quality / typecheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - name: Install exact pnpm
+        run: npm install --global pnpm@11.18.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create controlled typecheck failure
+        if: ${{ inputs.fail_gate == 'typecheck' }}
+        run: |
+          echo 'export const impossibleValue: string = 42;' > packages/domain/src/.ci-typecheck-canary.ts
+      - name: Typecheck
+        run: pnpm typecheck
+
+  unit:
+    name: quality / unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - name: Install exact pnpm
+        run: npm install --global pnpm@11.18.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create controlled unit failure
+        if: ${{ inputs.fail_gate == 'unit' }}
+        run: |
+          printf '%s\n' 'import { expect, test } from "vitest";' 'test("controlled failure", () => expect(true).toBe(false));' > scripts/__tests__/.ci-unit-canary.test.js
+      - name: Unit tests
+        run: pnpm test:unit

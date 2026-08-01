@@ -1,0 +1,4 @@
+title = "Personal Finance OS secret scanning policy"
+
+[extend]
+useDefault = true

@@ -1,0 +1,53 @@
+name: Database
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      negative_migration:
+        description: Add an ephemeral destructive statement and require migration policy failure
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migration-smoke:
+    name: database / migration-smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - name: Install exact pnpm
+        run: npm install --global pnpm@11.18.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create controlled migration failure
+        if: ${{ inputs.negative_migration }}
+        run: echo 'DROP SCHEMA app_identity CASCADE;' >> supabase/migrations/00000000000000_m0_foundation.sql
+      - name: Run fresh migration smoke
+        run: |
+          mkdir -p .tmp/ci
+          pnpm db:smoke 2>&1 | tee .tmp/ci/migration-smoke.log
+      - name: Upload migration smoke report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: migration-smoke-report
+          path: .tmp/ci/migration-smoke.log
+          if-no-files-found: error
+          retention-days: 14

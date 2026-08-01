@@ -1,0 +1,55 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      negative_canary:
+        description: Generate an ephemeral secret canary and require the scan to fail
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: security / secret-scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+      - name: Install exact pnpm
+        run: npm install --global pnpm@11.18.0
+      - name: Create ephemeral Gitleaks canary
+        if: ${{ inputs.negative_canary }}
+        run: |
+          mkdir -p .tmp/ci
+          printf '%s\n' 'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE' 'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY' > .tmp/ci/secret-canary.txt
+      - name: Scan repository
+        env:
+          CI_GITLEAKS_NO_GIT: ${{ inputs.negative_canary && '1' || '0' }}
+        run: pnpm security:secret-scan
+      - name: Upload redacted Gitleaks report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: gitleaks-redacted-report
+          path: .tmp/ci/gitleaks.sarif
+          if-no-files-found: error
+          retention-days: 14

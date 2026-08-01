@@ -6,10 +6,11 @@ Bu repository, Kişisel Finans İşletim Sistemi’nin M0 Foundation ilk impleme
 
 - B001: ADR-001–ADR-016 karar kayıtları
 - B002: pnpm workspace ve import sınırları
+- B003: pull request kalite ve secret-scan pipeline’ı
 - B004: PostgreSQL 17 / Supabase local migration temeli
 - B006: threat model, veri sınıfları ve kontrol sahipliği
 
-B003, B005 ve B007–B010 ile P0-A, P0-B ve RC özellikleri bu dilimde
+B005 ve B007–B010 ile P0-A, P0-B ve RC özellikleri bu dilimde
 uygulanmamıştır.
 
 ## Gereksinimler
