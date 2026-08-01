@@ -15,11 +15,18 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "test:ledger": "node tests/ledger/local-ledger.mjs",
     "test:rls": "node tests/rls/local-rls.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "pnpm --filter @personal-finance-os/domain build && tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@personal-finance-os/domain": "workspace:0.0.0",
+    "drizzle-orm": "0.45.2",
+    "postgres": "3.4.9"
   },
   "devDependencies": {
     "@supabase/supabase-js": "2.111.0",
+    "@types/node": "24.13.3",
     "drizzle-kit": "0.31.10"
   }
 }

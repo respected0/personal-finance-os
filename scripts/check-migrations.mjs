@@ -11,6 +11,7 @@ const errors = [];
 const migrationDirectory = path.join(rootDirectory, "supabase", "migrations");
 const foundationMigrationName = "00000000000000_m0_foundation.sql";
 const rlsHarnessMigrationName = "00000000000001_m0_rls_harness.sql";
+const ledgerKernelMigrationName = "20260801173000_p0_a0_ledger_kernel.sql";
 
 async function read(relativePath) {
   return readFile(path.join(rootDirectory, relativePath), "utf8");
@@ -29,6 +30,9 @@ if (!migrationFiles.includes(foundationMigrationName)) {
 }
 if (!migrationFiles.includes(rlsHarnessMigrationName)) {
   errors.push(`Eksik B008 RLS migration: ${rlsHarnessMigrationName}.`);
+}
+if (!migrationFiles.includes(ledgerKernelMigrationName)) {
+  errors.push(`Eksik P0-A0 ledger migration: ${ledgerKernelMigrationName}.`);
 }
 
 const versions = new Set();
@@ -113,6 +117,77 @@ if (!rpcSignature || /user_id/i.test(rpcSignature[1])) {
   errors.push("B008 RPC istemciden user_id parametresi alamaz.");
 }
 
+const ledgerKernelMigration = await read(
+  `supabase/migrations/${ledgerKernelMigrationName}`,
+);
+for (const [pattern, message] of [
+  [
+    /create\s+table\s+app_private\.ledger_accounts/i,
+    "B016 ledger_accounts tablosu eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.transactions/i,
+    "B016 transactions tablosu eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.ledger_postings/i,
+    "B016 ledger_postings tablosu eksik.",
+  ],
+  [
+    /numeric\s*\(19\s*,\s*4\)/i,
+    "B011/B016 numeric(19,4) para politikası eksik.",
+  ],
+  [/numeric\s*\(28\s*,\s*12\)/i, "B016 numeric(28,12) FX politikası eksik."],
+  [
+    /create\s+constraint\s+trigger\s+transactions_deferred_balance[\s\S]*deferrable\s+initially\s+deferred/i,
+    "B017 deferred transaction denge trigger'ı eksik.",
+  ],
+  [
+    /posting_count\s*<\s*2\s+or\s+debit_total\s*<>\s*credit_total/i,
+    "B017 exact debit/credit denge kontrolü eksik.",
+  ],
+  [
+    /posted transaction is immutable/i,
+    "B018 posted transaction immutability trigger'ı eksik.",
+  ],
+  [
+    /posted transaction cannot accept new ledger rows/i,
+    "B018 posted transaction yeni posting/link kabulünü engellemiyor.",
+  ],
+  [
+    /create\s+table\s+app_private\.idempotency_keys/i,
+    "B019 idempotency store eksik.",
+  ],
+  [
+    /primary\s+key\s*\(user_id\s*,\s*key\)/i,
+    "B019 user-scoped idempotency anahtarı eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.audit_events/i,
+    "B022 append-only audit_events eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.outbox_events/i,
+    "B023 transactional outbox eksik.",
+  ],
+  [
+    /security\s+definer[\s\S]*set\s+search_path\s*=\s*pg_catalog\s*,\s*app_private/i,
+    "P0-A0 SECURITY DEFINER sabit search_path kullanmıyor.",
+  ],
+  [
+    /alter\s+table\s+app_private\.transactions\s+enable\s+row\s+level\s+security/i,
+    "P0-A0 transactions RLS açık değil.",
+  ],
+  [
+    /revoke\s+all[\s\S]*from\s+public\s*,\s*anon\s*,\s*authenticated\s*,\s*service_role/i,
+    "P0-A0 ledger tablolarının geniş grant'leri kaldırılmamış.",
+  ],
+]) {
+  if (!pattern.test(ledgerKernelMigration)) {
+    errors.push(message);
+  }
+}
+
 const seed = await read("supabase/seed.sql");
 errors.push(...findForbiddenSeedPatterns(seed));
 
@@ -146,24 +221,36 @@ for (const [pattern, message] of [
 
 const rootManifest = await readJson("package.json");
 const dbManifest = await readJson("packages/db/package.json");
+const domainManifest = await readJson("packages/domain/package.json");
 if (rootManifest.devDependencies?.supabase !== "2.110.0") {
   errors.push("Supabase CLI devDependency tam 2.110.0 olmalı.");
 }
 if (dbManifest.devDependencies?.["drizzle-kit"] !== "0.31.10") {
   errors.push("drizzle-kit devDependency tam 0.31.10 olmalı.");
 }
-
-const disallowedDependencies = ["drizzle-orm", "postgres", "testcontainers"];
-for (const manifest of [rootManifest, dbManifest]) {
+if (rootManifest.devDependencies?.["fast-check"] !== "4.9.0") {
+  errors.push("P0-A0 fast-check devDependency tam 4.9.0 olmalı.");
+}
+if (rootManifest.devDependencies?.["@vitest/coverage-v8"] !== "4.1.10") {
+  errors.push("P0-A0 coverage-v8 devDependency tam 4.1.10 olmalı.");
+}
+if (domainManifest.dependencies?.["decimal.js"] !== "10.6.0") {
+  errors.push("P0-A0 decimal.js dependency tam 10.6.0 olmalı.");
+}
+if (dbManifest.dependencies?.["drizzle-orm"] !== "0.45.2") {
+  errors.push("P0-A0 drizzle-orm dependency tam 0.45.2 olmalı.");
+}
+if (dbManifest.dependencies?.postgres !== "3.4.9") {
+  errors.push("P0-A0 postgres dependency tam 3.4.9 olmalı.");
+}
+for (const manifest of [rootManifest, dbManifest, domainManifest]) {
   for (const field of [
     "dependencies",
     "devDependencies",
     "optionalDependencies",
   ]) {
-    for (const dependency of disallowedDependencies) {
-      if (manifest[field]?.[dependency]) {
-        errors.push(`B004 kapsam dışı dependency: ${dependency}.`);
-      }
+    if (manifest[field]?.testcontainers) {
+      errors.push("Henüz kullanılmayan testcontainers dependency eklenemez.");
     }
   }
 }
