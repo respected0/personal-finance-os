@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { CardWorkspace } from "./card-workspace";
+import { SubscriptionWorkspace } from "./subscription-workspace";
 
 interface AccountBalance {
   accountId: string;
@@ -705,6 +706,12 @@ export function DailyCoreApp() {
       </section>
 
       <CardWorkspace
+        accounts={accounts}
+        categories={categories}
+        onCommitted={loadData}
+      />
+
+      <SubscriptionWorkspace
         accounts={accounts}
         categories={categories}
         onCommitted={loadData}

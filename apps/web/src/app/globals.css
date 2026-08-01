@@ -224,8 +224,15 @@ small {
   padding: clamp(1rem, 3vw, 1.5rem);
 }
 
+.subscription-workspace {
+  margin-top: 1rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+}
+
 .card-summary-grid,
-.card-action-grid {
+.card-action-grid,
+.subscription-summary-grid,
+.subscription-action-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
@@ -236,8 +243,17 @@ small {
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
 }
 
+.subscription-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.subscription-action-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .card-summary,
-.compact-form {
+.compact-form,
+.subscription-summary {
   padding: 1rem;
   border: 1px solid var(--line);
   border-radius: 1rem;
@@ -246,6 +262,8 @@ small {
 
 .card-summary span,
 .card-summary small,
+.subscription-summary span,
+.subscription-summary small,
 .compact-impact span,
 .compact-impact small {
   display: block;
@@ -605,7 +623,8 @@ input::placeholder {
   .content-grid,
   .entry-layout,
   .setup-grid,
-  .card-action-grid {
+  .card-action-grid,
+  .subscription-action-grid {
     grid-template-columns: 1fr;
   }
 

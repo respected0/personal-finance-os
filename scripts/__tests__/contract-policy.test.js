@@ -23,6 +23,10 @@ describe("B005/P0-A2 contract boundary", () => {
       "packages/contracts/openapi/components/cards.yaml",
       "utf8",
     );
+    const subscriptionComponents = await readFile(
+      "packages/contracts/openapi/components/subscriptions.yaml",
+      "utf8",
+    );
 
     expect(specification).toContain("openapi: 3.1.0");
     expect(specification).toContain("/api/v1/health:");
@@ -47,6 +51,9 @@ describe("B005/P0-A2 contract boundary", () => {
       "/api/v1/cards",
       "/api/v1/cards/{cardId}/statements",
       "/api/v1/cards/{cardId}/payments/preview",
+      "/api/v1/subscriptions",
+      "/api/v1/subscription-cycles/{cycleId}/charge",
+      "/api/v1/subscription-cycles/{cycleId}/cashback",
     ]);
     expect(specification).not.toMatch(
       /\/api\/v1\/(budgets|investments|ledger|reconciliations|reports)/u,
@@ -58,6 +65,7 @@ describe("B005/P0-A2 contract boundary", () => {
       /\b(userId|user_id|name_enc|name_key_id|name_nonce|name_auth_tag)\b/u,
     );
     expect(cardComponents).not.toMatch(/\b(userId|user_id)\b/u);
+    expect(subscriptionComponents).not.toMatch(/\b(userId|user_id)\b/u);
   });
 
   test("accepts canonical decimal strings and rejects JSON numbers", () => {

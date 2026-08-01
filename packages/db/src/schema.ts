@@ -479,6 +479,103 @@ export const installmentItems = appPrivate.table(
   ],
 );
 
+export const subscriptions = appPrivate.table(
+  "subscriptions",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    name: text().notNull(),
+    billingDay: smallint("billing_day").notNull(),
+    paymentAccountId: uuid("payment_account_id").notNull(),
+    expectedGross: numeric("expected_gross", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    cashbackRate: numeric("cashback_rate", {
+      precision: 9,
+      scale: 8,
+    }).notNull(),
+    cashbackCap: numeric("cashback_cap", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    active: boolean().notNull().default(true),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("subscriptions_user_id_unique").on(table.userId, table.id),
+    index("subscriptions_user_active_billing_idx").on(
+      table.userId,
+      table.active,
+      table.billingDay,
+      table.id,
+    ),
+    foreignKey({
+      columns: [table.userId, table.paymentAccountId],
+      foreignColumns: [financialAccounts.userId, financialAccounts.id],
+      name: "subscriptions_payment_account_fk",
+    }),
+  ],
+);
+
+export const subscriptionCycles = appPrivate.table(
+  "subscription_cycles",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    subscriptionId: uuid("subscription_id").notNull(),
+    period: date().notNull(),
+    chargeTransactionId: uuid("charge_transaction_id"),
+    cashbackTotal: numeric("cashback_total", {
+      precision: 19,
+      scale: 4,
+    })
+      .notNull()
+      .default("0"),
+    actualNet: numeric("actual_net", { precision: 19, scale: 4 })
+      .notNull()
+      .default("0"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("subscription_cycles_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    uniqueIndex("subscription_cycles_user_subscription_period_unique").on(
+      table.userId,
+      table.subscriptionId,
+      table.period,
+    ),
+    index("subscription_cycles_user_period_idx").on(
+      table.userId,
+      table.period,
+      table.id,
+    ),
+    foreignKey({
+      columns: [table.userId, table.subscriptionId],
+      foreignColumns: [subscriptions.userId, subscriptions.id],
+      name: "subscription_cycles_subscription_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.chargeTransactionId],
+      foreignColumns: [transactions.userId, transactions.id],
+      name: "subscription_cycles_charge_transaction_fk",
+    }),
+  ],
+);
+
 export const ledgerPostings = appPrivate.table(
   "ledger_postings",
   {
