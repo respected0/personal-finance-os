@@ -76,7 +76,19 @@ for (const [pattern, message] of [
     "Seed yolu sabit değil.",
   ],
   [/\[studio\][\s\S]*?\benabled\s*=\s*false\b/, "Studio kapalı değil."],
-  [/\[auth\][\s\S]*?\benabled\s*=\s*false\b/, "B007 öncesi auth kapalı değil."],
+  [/\[auth\][\s\S]*?\benabled\s*=\s*true\b/, "B007 local auth açık değil."],
+  [
+    /\[auth\][\s\S]*?\benable_signup\s*=\s*false\b/,
+    "B007 public signup kapalı değil.",
+  ],
+  [
+    /\[auth\.email\][\s\S]*?\benable_signup\s*=\s*true\b/,
+    "B007 invited email login sağlayıcısı açık değil.",
+  ],
+  [
+    /\[auth\.mfa\.totp\][\s\S]*?\benroll_enabled\s*=\s*true\b[\s\S]*?\bverify_enabled\s*=\s*true\b/,
+    "B007 TOTP enroll/verify açık değil.",
+  ],
 ]) {
   if (!pattern.test(config)) {
     errors.push(message);

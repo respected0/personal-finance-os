@@ -1,4 +1,4 @@
-import { isRequestId } from "./redaction.js";
+import { isRequestId } from "./redaction";
 
 export interface HeaderReader {
   get(name: string): string | null;
