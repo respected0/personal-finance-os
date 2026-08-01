@@ -9,6 +9,7 @@
     "test:auth:browser": "playwright test --config playwright.config.mjs",
     "test:auth:integration": "node tests/integration/auth/local-auth.mjs",
     "test:daily-api": "node tests/integration/daily-core/local-api.mjs",
+    "test:daily-browser": "node tests/e2e/daily-core/local-browser.mjs",
     "typecheck": "pnpm --filter @personal-finance-os/contracts build && pnpm --filter @personal-finance-os/domain build && pnpm --filter @personal-finance-os/db build && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -17,10 +18,13 @@
     "@personal-finance-os/domain": "workspace:0.0.0",
     "@supabase/ssr": "0.12.4",
     "@supabase/supabase-js": "2.111.0",
+    "@tailwindcss/postcss": "4.3.3",
     "next": "16.2.12",
     "pino": "10.3.1",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-hook-form": "7.83.0",
+    "tailwindcss": "4.3.3"
   },
   "devDependencies": {
     "@playwright/test": "1.62.0",
