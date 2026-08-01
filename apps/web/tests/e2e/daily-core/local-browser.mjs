@@ -144,6 +144,10 @@ async function createFixture(cookie) {
     "bank",
   );
   const cashAccountId = await createAccount("Sentetik Tarayıcı Nakit", "cash");
+  const cardAccountId = await createAccount(
+    "Sentetik Tarayıcı Kartı",
+    "credit_card",
+  );
 
   const createCategory = async (name, categoryType) => {
     const result = await api("/api/v1/categories", {
@@ -176,7 +180,27 @@ async function createFixture(cookie) {
     "Açılış bakiyesi fixture metrikleri değiştirdi.",
   );
 
-  return { bankAccountId, cashAccountId, expenseCategoryId };
+  const cardProfile = await api("/api/v1/cards", {
+    cookie,
+    method: "POST",
+    body: {
+      accountId: cardAccountId,
+      creditLimit: "25000.00",
+      statementDay: 20,
+      dueDay: 30,
+      minimumPaymentRule: {
+        type: "percentage",
+        rate: "0.20",
+        minimumAmount: "100.00",
+      },
+    },
+  });
+  assert(
+    cardProfile.response.status === 201,
+    "Kart profili fixture oluşturulamadı.",
+  );
+
+  return { bankAccountId, cashAccountId, cardAccountId, expenseCategoryId };
 }
 
 async function runDesktop(cookie, fixture) {
@@ -194,7 +218,7 @@ async function runDesktop(cookie, fixture) {
   await page.getByRole("button", { name: "+ İşlem", exact: true }).click();
   await page.getByRole("button", { name: "İşlemi kaydet" }).click();
   await expect(page.getByRole("alert")).toContainText(["Tutar gerekli."]);
-  await page.getByLabel("Tutar").fill("427,50");
+  await page.getByLabel("Tutar", { exact: true }).fill("427,50");
   await page.getByRole("button", { name: "İşlemi kaydet" }).click();
   await expect(page.getByRole("alert")).toContainText([
     "Kaynak hesap seçin.",
@@ -211,7 +235,7 @@ async function runDesktop(cookie, fixture) {
 
   await page.getByRole("button", { name: "+ İşlem", exact: true }).click();
   await page.getByLabel("Transfer", { exact: true }).check();
-  await page.getByLabel("Tutar").fill("1.000,00");
+  await page.getByLabel("Tutar", { exact: true }).fill("1.000,00");
   await page.getByLabel("Kaynak hesap").selectOption(fixture.bankAccountId);
   await page.getByLabel("Hedef hesap").selectOption(fixture.cashAccountId);
   await page.getByLabel("Transfer ücreti İsteğe bağlı").fill("2,50");
@@ -225,11 +249,82 @@ async function runDesktop(cookie, fixture) {
   await expect(page.getByTestId("net-worth")).toHaveText("19.570,00 TRY");
   await expect(page.getByTestId("period-expense")).toHaveText("430,00 TRY");
 
+  const cardSummary = page.getByTestId("card-summary");
+  await expect(cardSummary).toContainText("Sentetik Tarayıcı Kartı");
+  await expect(cardSummary).toContainText("Limit 25.000,00 TRY");
+  const expenseForm = page
+    .locator("form")
+    .filter({ has: page.getByRole("heading", { name: "Kart harcaması" }) });
+  const cardStartedAt = Date.now();
+  await expenseForm
+    .getByLabel("Harcama kartı")
+    .selectOption(fixture.cardAccountId);
+  await expenseForm
+    .getByLabel("Harcama kategorisi")
+    .selectOption(fixture.expenseCategoryId);
+  await expenseForm.getByLabel("Harcama tutarı").fill("300,10");
+  await expenseForm.getByRole("button", { name: "Etkiyi göster" }).click();
+  await expect(expenseForm.getByTestId("card-effect-summary")).toContainText(
+    "Gider 300,10 TRY",
+  );
+  await expect(expenseForm.getByTestId("card-effect-summary")).toContainText(
+    "Net servet -300,10 TRY",
+  );
+  assert(
+    Date.now() - cardStartedAt < 20_000,
+    "Kart harcaması önizleme akışı 20 saniyelik kabul hedefini aştı.",
+  );
+  await expenseForm.getByRole("button", { name: "Harcamayı kaydet" }).click();
+  await expect(
+    page.locator(".card-workspace").getByRole("status"),
+  ).toContainText("banka değişmedi");
+  await expect(page.getByTestId("net-worth")).toHaveText("19.269,90 TRY");
   await expect(
     page
       .locator(".account-row")
       .filter({ hasText: "Sentetik Tarayıcı Ana Hesap" }),
   ).toContainText("18.570,00 TRY");
+  await expect(
+    page.locator(".account-row").filter({ hasText: "Sentetik Tarayıcı Kartı" }),
+  ).toContainText("300,10 TRY");
+
+  const paymentForm = page
+    .locator("form")
+    .filter({ has: page.getByRole("heading", { name: "Kart ödemesi" }) });
+  await paymentForm
+    .getByLabel("Ödeme banka hesabı")
+    .selectOption(fixture.bankAccountId);
+  await paymentForm
+    .getByLabel("Ödeme kartı")
+    .selectOption(fixture.cardAccountId);
+  await paymentForm.getByLabel("Ödeme tutarı").fill("100,00");
+  await paymentForm.getByRole("button", { name: "Etkiyi göster" }).click();
+  await expect(paymentForm.getByTestId("card-effect-summary")).toContainText(
+    "Gider 0,00 TRY",
+  );
+  await expect(paymentForm.getByTestId("card-effect-summary")).toContainText(
+    "Net servet 0,00 TRY",
+  );
+  await paymentForm.getByRole("button", { name: "Ödemeyi kaydet" }).click();
+  await expect(
+    page.locator(".card-workspace").getByRole("status"),
+  ).toContainText("ikinci gider oluşmadı");
+  await expect(page.getByTestId("net-worth")).toHaveText("19.269,90 TRY");
+  await expect(page.getByTestId("period-expense")).toHaveText("730,10 TRY");
+  await expect(
+    page
+      .locator(".account-row")
+      .filter({ hasText: "Sentetik Tarayıcı Ana Hesap" }),
+  ).toContainText("18.470,00 TRY");
+  await expect(
+    page.locator(".account-row").filter({ hasText: "Sentetik Tarayıcı Kartı" }),
+  ).toContainText("200,10 TRY");
+
+  await expect(
+    page
+      .locator(".account-row")
+      .filter({ hasText: "Sentetik Tarayıcı Ana Hesap" }),
+  ).toContainText("18.470,00 TRY");
   await expect(
     page.locator(".account-row").filter({ hasText: "Sentetik Tarayıcı Nakit" }),
   ).toContainText("1.000,00 TRY");
@@ -255,7 +350,7 @@ async function runDesktop(cookie, fixture) {
   await expect(page.getByTestId("history-aggregate")).toContainText(
     "Gider 427,50 TRY",
   );
-  await expect(page.getByTestId("period-expense")).toHaveText("430,00 TRY");
+  await expect(page.getByTestId("period-expense")).toHaveText("730,10 TRY");
 
   await context.close();
 }
@@ -267,7 +362,6 @@ async function runMobile(cookie, fixture) {
   await context.addCookies(browserCookies(cookie));
   const page = await context.newPage();
   await page.goto(webUrl);
-  await expect(page.getByTestId("net-worth")).toHaveText("19.570,00 TRY");
   const noInitialOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth <= window.innerWidth,
   );
@@ -281,11 +375,11 @@ async function runMobile(cookie, fixture) {
   );
   const startedAt = Date.now();
   await primary.click();
-  await page.getByLabel("Tutar").fill("12,34");
+  await page.getByLabel("Tutar", { exact: true }).fill("12,34");
   await page.getByLabel("Kaynak hesap").selectOption(fixture.bankAccountId);
   await page.locator("#entry-category").selectOption(fixture.expenseCategoryId);
   const effect = page.getByTestId("effect-summary");
-  await expect(effect).toContainText("18.557,66 TRY");
+  await expect(effect).toContainText("18.457,66 TRY");
   await expect(effect).toContainText("Gider etkisi12,34 TRY");
   assert(
     Date.now() - startedAt < 20_000,
@@ -304,7 +398,7 @@ async function runMobile(cookie, fixture) {
   assert(noEntryOverflow, "390×844 işlem görünümünde yatay taşma var.");
   await page.getByRole("button", { name: "İşlemi kaydet" }).click();
   await expect(page.getByRole("status")).toContainText("Gider kaydedildi.");
-  await expect(page.getByTestId("net-worth")).toHaveText("19.557,66 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("19.257,56 TRY");
   await context.close();
 }
 
@@ -405,6 +499,7 @@ try {
   );
   console.log("P0-A1 390x844 no-overflow/effect/44px/under-20s flow: PASS");
   console.log("P0-A1 UAT-01/02/15/16 synthetic browser evidence: PASS");
+  console.log("P0-A2 UAT-03/04 card expense/payment browser evidence: PASS");
 } finally {
   await browser?.close();
   if (webProcess && webProcess.exitCode === null) {

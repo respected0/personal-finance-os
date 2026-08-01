@@ -219,6 +219,57 @@ small {
   margin-top: 1rem;
 }
 
+.card-workspace {
+  margin-top: 1rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+}
+
+.card-summary-grid,
+.card-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.card-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.card-summary,
+.compact-form {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.card-summary span,
+.card-summary small,
+.compact-impact span,
+.compact-impact small {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+.compact-form {
+  margin-top: 1rem;
+}
+
+.compact-impact {
+  padding: 0.8rem;
+  border-radius: 0.8rem;
+  background: rgba(207, 228, 218, 0.45);
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 .setup-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -553,7 +604,8 @@ input::placeholder {
 
   .content-grid,
   .entry-layout,
-  .setup-grid {
+  .setup-grid,
+  .card-action-grid {
     grid-template-columns: 1fr;
   }
 

@@ -16,6 +16,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { CardWorkspace } from "./card-workspace";
 
 interface AccountBalance {
   accountId: string;
@@ -702,6 +703,12 @@ export function DailyCoreApp() {
           <small>Aynı geçmiş filtresinden</small>
         </article>
       </section>
+
+      <CardWorkspace
+        accounts={accounts}
+        categories={categories}
+        onCommitted={loadData}
+      />
 
       {setupOpen && (
         <section className="panel setup-panel" aria-labelledby="setup-title">
