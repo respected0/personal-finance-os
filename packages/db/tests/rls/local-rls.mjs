@@ -78,6 +78,22 @@ async function createSyntheticUser(specification, apiUrl, anonKey) {
   };
 }
 
+async function waitForRlsSchema(client) {
+  let lastError;
+  for (let attempt = 1; attempt <= 30; attempt += 1) {
+    const probe = await client.from("rls_probe_parents").select("id").limit(0);
+    if (!probe.error) {
+      return;
+    }
+    lastError = probe.error;
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+
+  throw new Error(
+    `B008 PostgREST schema cache 30 saniyede hazır olmadı: ${lastError?.message ?? "unknown"}`,
+  );
+}
+
 async function inspectRuntimePolicies() {
   const sql = await readFile(
     path.join(projectRoot, "supabase/tests/rls/policy-introspection.sql"),
@@ -130,6 +146,7 @@ try {
   adminClient = createClient(apiUrl, localAdminKey, { auth: authOptions });
   const a = await createSyntheticUser(users.a, apiUrl, anonKey);
   const b = await createSyntheticUser(users.b, apiUrl, anonKey);
+  await waitForRlsSchema(a.client);
 
   const aParentId = randomUUID();
   const bParentId = randomUUID();
