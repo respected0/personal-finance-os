@@ -32,6 +32,7 @@ jobs:
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version-file: .node-version
+          package-manager-cache: false
       - name: Install exact pnpm
         run: npm install --global pnpm@11.18.0
       - name: Install dependencies
@@ -45,7 +46,7 @@ jobs:
           pnpm db:smoke 2>&1 | tee .tmp/ci/migration-smoke.log
       - name: Upload migration smoke report
         if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: migration-smoke-report
           path: .tmp/ci/migration-smoke.log
