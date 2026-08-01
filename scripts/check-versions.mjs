@@ -22,6 +22,8 @@ const requiredVersions = new Map([
   ["eslint-config-next", "16.2.12"],
   ["eslint-plugin-boundaries", "7.1.0"],
   ["prettier", "3.9.6"],
+  ["supabase", "2.110.0"],
+  ["drizzle-kit", "0.31.10"],
   ["vitest", "4.1.10"],
 ]);
 const observed = new Map();

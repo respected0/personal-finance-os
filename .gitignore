@@ -4,6 +4,9 @@ dist/
 coverage/
 .tmp/
 .turbo/
+packages/db/.drizzle/
+supabase/.branches/
+supabase/.temp/
 *.tsbuildinfo
 .env
 .env.*

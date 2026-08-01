@@ -6,9 +6,11 @@ Bu repository, Kişisel Finans İşletim Sistemi’nin M0 Foundation ilk impleme
 
 - B001: ADR-001–ADR-016 karar kayıtları
 - B002: pnpm workspace ve import sınırları
+- B004: PostgreSQL 17 / Supabase local migration temeli
 - B006: threat model, veri sınıfları ve kontrol sahipliği
 
-B003–B010 ile P0-A, P0-B ve RC özellikleri bu dilimde uygulanmamıştır.
+B003, B005 ve B007–B010 ile P0-A, P0-B ve RC özellikleri bu dilimde
+uygulanmamıştır.
 
 ## Gereksinimler
 
@@ -21,3 +23,20 @@ B003–B010 ile P0-A, P0-B ve RC özellikleri bu dilimde uygulanmamıştır.
 pnpm install --frozen-lockfile
 pnpm check
 ```
+
+## Local Database
+
+Docker uyumlu local container runtime çalışırken:
+
+```bash
+pnpm db:start
+pnpm db:status
+pnpm db:reset
+pnpm db:checksum
+pnpm db:smoke
+pnpm db:stop
+```
+
+Komutlar repository içinde tam sürümü sabitlenmiş Supabase CLI’ı kullanır.
+PostgreSQL major sürümü 17’dir. SQL migration dosyaları tek şema otoritesidir;
+Drizzle push ve dashboard üzerinden kayıtsız şema değişikliği yasaktır.

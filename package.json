@@ -18,7 +18,14 @@
     "check:threat-model": "node scripts/check-threat-model.mjs",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:versions": "node scripts/check-versions.mjs",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build && pnpm check:adrs && pnpm check:threat-model && pnpm check:boundaries && pnpm check:versions"
+    "check:migrations": "node scripts/check-migrations.mjs",
+    "db:start": "node scripts/db/start.mjs",
+    "db:status": "node scripts/db/status.mjs",
+    "db:reset": "node scripts/db/reset.mjs",
+    "db:checksum": "node scripts/db/checksum.mjs",
+    "db:stop": "node scripts/db/stop.mjs",
+    "db:smoke": "node scripts/db/smoke.mjs",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build && pnpm check:adrs && pnpm check:threat-model && pnpm check:boundaries && pnpm check:versions && pnpm check:migrations"
   },
   "devDependencies": {
     "@typescript/native": "npm:typescript@7.0.2",
@@ -26,6 +33,7 @@
     "eslint-config-next": "16.2.12",
     "eslint-plugin-boundaries": "7.1.0",
     "prettier": "3.9.6",
+    "supabase": "2.110.0",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "vitest": "4.1.10"
   }
