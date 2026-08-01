@@ -4,19 +4,28 @@
 
 - Gate: `G2 — P0-A0 Ledger Kernel`
 - Local result: **PASS**
-- Required GitHub CI: **PENDING**
+- Required GitHub CI: **PASS** (`10/10` required checks)
 - Evidence date: `2026-08-01`
 - Evaluated branch: `feat/p0-a0-ledger-kernel`
 - Evaluated implementation commit:
   `374899a92fa0aa752ed1ad55a4d871415bbae1d5`
+- Evaluated CI head: `59ddb9f11f8c8f09255ff3292f56169b9814974e`
 - Pull request: [#8](https://github.com/respected0/personal-finance-os/pull/8)
-  (**DRAFT / OPEN**; required checks in progress)
+  (**DRAFT / OPEN**; evidence closure and merge pending)
 - Binding scope: `B011`–`B024`, `INV-01`–`INV-10`, UAT financial rules
   engine+DB `16/16`, and JavaScript financial float boundary `0`
 
-G2 is not declared complete until every required GitHub check passes on the
-latest pull-request head. The local implementation and runtime acceptance are
-complete; the CI result and implementation SHA are recorded before merge.
+G2 is **PASS**. Every required GitHub check passed on the evaluated CI head.
+The evidence-only closure commit must pass the same protected checks on the
+latest pull-request head before merge.
+
+## GitHub CI evidence
+
+| Workflow | Required contexts                                                               | Result     | Run                                                                                       |
+| -------- | ------------------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------- |
+| Quality  | format, lint, typecheck, unit, OpenAPI, Auth integration, RLS, fixture contract | `8/8 PASS` | [30711938519](https://github.com/respected0/personal-finance-os/actions/runs/30711938519) |
+| Database | migration-smoke                                                                 | `PASS`     | [30711938533](https://github.com/respected0/personal-finance-os/actions/runs/30711938533) |
+| Security | secret-scan                                                                     | `PASS`     | [30711938503](https://github.com/respected0/personal-finance-os/actions/runs/30711938503) |
 
 ## Backlog completion
 
