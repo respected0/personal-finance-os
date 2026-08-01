@@ -70,6 +70,20 @@ if (!combined.includes("pnpm db:smoke")) {
   errors.push("database / migration-smoke pnpm db:smoke çalıştırmalı.");
 }
 
+const migrationWorkflow = await readFile(
+  ".github/workflows/migration-smoke.yml",
+  "utf8",
+);
+if (
+  !/set -o pipefail[\s\S]{0,160}pnpm db:smoke 2>&1 \| tee/.test(
+    migrationWorkflow,
+  )
+) {
+  errors.push(
+    "database / migration-smoke, tee kullanırken db:smoke hata kodunu pipefail ile korumalı.",
+  );
+}
+
 const protectionDocument = await readFile(
   "docs/operations/github-branch-protection.md",
   "utf8",
