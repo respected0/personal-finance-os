@@ -14,16 +14,17 @@ import {
   requireFinanceRuntime,
 } from "../../../../../server/finance/runtime";
 
-function dailyCommand(input: TransactionCommandInput): TransactionCommand {
+function availableCommand(input: TransactionCommandInput): TransactionCommand {
   if (
     input.type !== "expense" &&
     input.type !== "income" &&
-    input.type !== "transfer"
+    input.type !== "transfer" &&
+    input.type !== "card_payment"
   ) {
     throw new FinanceApiError(
       422,
       "validation_failed",
-      "This transaction type is not available in P0-A1.",
+      "This transaction type is not available in the current product wave.",
     );
   }
   return input as TransactionCommand;
@@ -32,7 +33,7 @@ function dailyCommand(input: TransactionCommandInput): TransactionCommand {
 export async function POST(request: Request) {
   try {
     const runtime = await requireFinanceRuntime(request, "aal2");
-    const command = dailyCommand(
+    const command = availableCommand(
       parseFinanceInput(transactionCommandSchema, await request.json()),
     );
     return financeJson(previewTransaction(command), 200, runtime.requestId);

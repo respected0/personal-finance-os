@@ -5,8 +5,8 @@ import {
   problemDetailsSchema,
 } from "../../packages/contracts/src/index.ts";
 
-describe("B005/P0-A1 contract boundary", () => {
-  test("exposes only approved foundation, ledger and daily-core paths", async () => {
+describe("B005/P0-A2 contract boundary", () => {
+  test("exposes only approved foundation, ledger, daily-core and card paths", async () => {
     const specification = await readFile(
       "packages/contracts/openapi/openapi.yaml",
       "utf8",
@@ -17,6 +17,10 @@ describe("B005/P0-A1 contract boundary", () => {
     );
     const dailyCoreComponents = await readFile(
       "packages/contracts/openapi/components/daily-core.yaml",
+      "utf8",
+    );
+    const cardComponents = await readFile(
+      "packages/contracts/openapi/components/cards.yaml",
       "utf8",
     );
 
@@ -40,9 +44,12 @@ describe("B005/P0-A1 contract boundary", () => {
       "/api/v1/accounts/{accountId}",
       "/api/v1/accounts/{accountId}/balance",
       "/api/v1/categories",
+      "/api/v1/cards",
+      "/api/v1/cards/{cardId}/statements",
+      "/api/v1/cards/{cardId}/payments/preview",
     ]);
     expect(specification).not.toMatch(
-      /\/api\/v1\/(cards|budgets|investments|ledger|reconciliations|reports)/u,
+      /\/api\/v1\/(budgets|investments|ledger|reconciliations|reports)/u,
     );
     expect(ledgerComponents).not.toMatch(
       /\b(userId|user_id|originalPostings|outstandingAmount|availableQuantity|costBasis|alreadyRealized)\b/u,
@@ -50,6 +57,7 @@ describe("B005/P0-A1 contract boundary", () => {
     expect(dailyCoreComponents).not.toMatch(
       /\b(userId|user_id|name_enc|name_key_id|name_nonce|name_auth_tag)\b/u,
     );
+    expect(cardComponents).not.toMatch(/\b(userId|user_id)\b/u);
   });
 
   test("accepts canonical decimal strings and rejects JSON numbers", () => {

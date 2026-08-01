@@ -28,6 +28,8 @@ export interface ExpenseCommand extends BaseCommand {
   readonly sourceAccountId: string;
   readonly sourceKind: PaymentAccountKind;
   readonly categoryId: string;
+  readonly installmentCount?: number;
+  readonly firstInstallmentDate?: string;
 }
 
 export interface IncomeCommand extends BaseCommand {
@@ -54,6 +56,12 @@ export interface CardPaymentCommand extends BaseCommand {
   readonly amount: string;
   readonly bankAccountId: string;
   readonly cardAccountId: string;
+  readonly statementAllocations?: readonly CardStatementAllocation[];
+}
+
+export interface CardStatementAllocation {
+  readonly statementId: string;
+  readonly amount: string;
 }
 
 export interface CashbackRefundCommand extends BaseCommand {

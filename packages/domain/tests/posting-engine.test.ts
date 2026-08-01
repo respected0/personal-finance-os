@@ -198,6 +198,37 @@ describe("B013-B015 transaction commands and posting templates", () => {
     expect(plan.postings).toHaveLength(4);
   });
 
+  test("card installment expense is fully recognized at purchase", () => {
+    const plan = buildPostingPlan({
+      ...common,
+      type: "expense",
+      amount: "1000.01",
+      sourceAccountId: id("4"),
+      sourceKind: "card",
+      categoryId: id("2"),
+      installmentCount: 3,
+      firstInstallmentDate: "2026-08-10",
+    });
+    expect(plan.effects.personalExpenseDelta).toBe("1000.01");
+    expect(plan.effects.netWorthDelta).toBe("-1000.01");
+    expect(plan.postings).toHaveLength(2);
+  });
+
+  test("card payment statement allocations cannot exceed payment", () => {
+    expect(() =>
+      buildPostingPlan({
+        ...common,
+        type: "card_payment",
+        amount: "500.00",
+        bankAccountId: id("1"),
+        cardAccountId: id("4"),
+        statementAllocations: [{ statementId: id("20"), amount: "500.01" }],
+      }),
+    ).toThrowError(
+      expect.objectContaining({ code: "statement_allocation_exceeded" }),
+    );
+  });
+
   test("preview is pure, deterministic, and uses the production engine", () => {
     const first = previewTransaction(expense);
     const second = previewTransaction(structuredClone(expense));

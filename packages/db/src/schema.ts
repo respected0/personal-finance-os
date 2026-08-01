@@ -208,6 +208,94 @@ export const financialAccounts = appPrivate.table(
   ],
 );
 
+export const creditCardProfiles = appPrivate.table(
+  "credit_card_profiles",
+  {
+    accountId: uuid("account_id").primaryKey(),
+    userId: uuid("user_id").notNull(),
+    creditLimit: numeric("credit_limit", { precision: 19, scale: 4 }).notNull(),
+    statementDay: smallint("statement_day").notNull(),
+    dueDay: smallint("due_day").notNull(),
+    minimumPaymentRule: jsonb("minimum_payment_rule")
+      .$type<Record<string, string>>()
+      .notNull(),
+    active: boolean().notNull().default(true),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("credit_card_profiles_user_account_unique").on(
+      table.userId,
+      table.accountId,
+    ),
+    index("credit_card_profiles_user_active_idx").on(
+      table.userId,
+      table.active,
+      table.accountId,
+    ),
+    foreignKey({
+      columns: [table.userId, table.accountId],
+      foreignColumns: [financialAccounts.userId, financialAccounts.id],
+      name: "credit_card_profiles_account_fk",
+    }),
+  ],
+);
+
+export const creditCardStatements = appPrivate.table(
+  "credit_card_statements",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    cardAccountId: uuid("card_account_id").notNull(),
+    periodStart: date("period_start").notNull(),
+    periodEnd: date("period_end").notNull(),
+    closingBalance: numeric("closing_balance", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    minimumDue: numeric("minimum_due", { precision: 19, scale: 4 }).notNull(),
+    paidAmount: numeric("paid_amount", { precision: 19, scale: 4 })
+      .notNull()
+      .default("0"),
+    dueDate: date("due_date").notNull(),
+    status: text().notNull().default("open"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("credit_card_statements_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    uniqueIndex("credit_card_statements_user_card_period_unique").on(
+      table.userId,
+      table.cardAccountId,
+      table.periodStart,
+      table.periodEnd,
+    ),
+    index("credit_card_statements_user_card_period_idx").on(
+      table.userId,
+      table.cardAccountId,
+      table.periodEnd,
+      table.id,
+    ),
+    foreignKey({
+      columns: [table.userId, table.cardAccountId],
+      foreignColumns: [creditCardProfiles.userId, creditCardProfiles.accountId],
+      name: "credit_card_statements_card_fk",
+    }),
+  ],
+);
+
 export const transactions = appPrivate.table(
   "transactions",
   {
@@ -273,6 +361,120 @@ export const transactions = appPrivate.table(
       columns: [table.userId, table.categoryId],
       foreignColumns: [categories.userId, categories.id],
       name: "transactions_category_fk",
+    }),
+  ],
+);
+
+export const statementPayments = appPrivate.table(
+  "statement_payments",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    statementId: uuid("statement_id").notNull(),
+    transactionId: uuid("transaction_id").notNull(),
+    amount: numeric({ precision: 19, scale: 4 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("statement_payments_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("statement_payments_user_statement_transaction_unique").on(
+      table.userId,
+      table.statementId,
+      table.transactionId,
+    ),
+    foreignKey({
+      columns: [table.userId, table.statementId],
+      foreignColumns: [creditCardStatements.userId, creditCardStatements.id],
+      name: "statement_payments_statement_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.transactionId],
+      foreignColumns: [transactions.userId, transactions.id],
+      name: "statement_payments_transaction_fk",
+    }),
+  ],
+);
+
+export const installmentPlans = appPrivate.table(
+  "installment_plans",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    purchaseTransactionId: uuid("purchase_transaction_id").notNull(),
+    cardAccountId: uuid("card_account_id").notNull(),
+    purchaseTotal: numeric("purchase_total", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    installmentCount: smallint("installment_count").notNull(),
+    recognitionPolicy: text("recognition_policy")
+      .notNull()
+      .default("full_at_purchase"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("installment_plans_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("installment_plans_user_purchase_unique").on(
+      table.userId,
+      table.purchaseTransactionId,
+    ),
+    foreignKey({
+      columns: [table.userId, table.purchaseTransactionId],
+      foreignColumns: [transactions.userId, transactions.id],
+      name: "installment_plans_purchase_transaction_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.cardAccountId],
+      foreignColumns: [creditCardProfiles.userId, creditCardProfiles.accountId],
+      name: "installment_plans_card_fk",
+    }),
+  ],
+);
+
+export const installmentItems = appPrivate.table(
+  "installment_items",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    planId: uuid("plan_id").notNull(),
+    sequence: smallint().notNull(),
+    dueDate: date("due_date").notNull(),
+    cashFlowAmount: numeric("cash_flow_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    statementId: uuid("statement_id"),
+    status: text().notNull().default("scheduled"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("installment_items_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("installment_items_user_plan_sequence_unique").on(
+      table.userId,
+      table.planId,
+      table.sequence,
+    ),
+    index("installment_items_user_due_status_idx").on(
+      table.userId,
+      table.status,
+      table.dueDate,
+      table.id,
+    ),
+    foreignKey({
+      columns: [table.userId, table.planId],
+      foreignColumns: [installmentPlans.userId, installmentPlans.id],
+      name: "installment_items_plan_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.statementId],
+      foreignColumns: [creditCardStatements.userId, creditCardStatements.id],
+      name: "installment_items_statement_fk",
     }),
   ],
 );

@@ -29,7 +29,12 @@ begin
           'outbox_events',
           'institutions',
           'categories',
-          'financial_accounts'
+          'financial_accounts',
+          'credit_card_profiles',
+          'credit_card_statements',
+          'statement_payments',
+          'installment_plans',
+          'installment_items'
         )
       )
   ) then
@@ -54,12 +59,17 @@ begin
     or exists (select 1 from app_private.institutions)
     or exists (select 1 from app_private.categories)
     or exists (select 1 from app_private.financial_accounts)
+    or exists (select 1 from app_private.credit_card_profiles)
+    or exists (select 1 from app_private.credit_card_statements)
+    or exists (select 1 from app_private.statement_payments)
+    or exists (select 1 from app_private.installment_plans)
+    or exists (select 1 from app_private.installment_items)
   then
-    raise exception 'Seed must not populate P0-A0/P0-A1 financial or operational rows.';
+    raise exception 'Seed must not populate P0-A financial or operational rows.';
   end if;
 
   raise notice
-    'P0-A1 seed complete: zero identity, institution, account, category, transaction, posting, audit, outbox, or finance rows.';
+    'P0-A2 seed complete: zero identity, institution, account, card, category, transaction, posting, audit, outbox, or finance rows.';
 end
 $seed$;
 
