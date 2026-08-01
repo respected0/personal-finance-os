@@ -35,13 +35,14 @@
     "auth:check": "pnpm auth:storage && pnpm auth:integration && pnpm auth:browser",
     "rls:integration": "pnpm --filter @personal-finance-os/test-kit build && pnpm --filter @personal-finance-os/db test:rls",
     "rls:check": "pnpm security:runtime-credentials && pnpm rls:integration",
+    "fixture:check": "pnpm --filter @personal-finance-os/test-kit build && APP_ENV=test node scripts/test/seed-uat-syn-01.mjs",
     "db:start": "node scripts/db/start.mjs",
     "db:status": "node scripts/db/status.mjs",
     "db:reset": "node scripts/db/reset.mjs",
     "db:checksum": "node scripts/db/checksum.mjs",
     "db:stop": "node scripts/db/stop.mjs",
     "db:smoke": "node scripts/db/smoke.mjs",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build && pnpm check:adrs && pnpm check:threat-model && pnpm check:boundaries && pnpm check:versions && pnpm check:migrations && pnpm check:ci-policy && pnpm contracts:check && pnpm auth:storage && pnpm security:runtime-credentials"
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build && pnpm check:adrs && pnpm check:threat-model && pnpm check:boundaries && pnpm check:versions && pnpm check:migrations && pnpm check:ci-policy && pnpm contracts:check && pnpm auth:storage && pnpm security:runtime-credentials && pnpm fixture:check"
   },
   "devDependencies": {
     "@redocly/cli": "2.41.1",

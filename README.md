@@ -13,9 +13,9 @@ Bu repository, Kişisel Finans İşletim Sistemi’nin M0 Foundation ilk impleme
 - B007: Supabase Auth invite-only, TOTP AAL2 ve BFF cookie temeli
 - B008: RLS default-deny, cross-user ve runtime credential test harness’ı
 - B009: request_id taşıyan structured redacted logging
+- B010: deterministik ve production’dan yalıtılmış UAT-SYN-01 sözleşmesi
 
-B010 ile P0-A, P0-B ve RC özellikleri bu dilimde
-uygulanmamıştır.
+P0-A, P0-B ve RC özellikleri bu dilimde uygulanmamıştır.
 
 ## Gereksinimler
 
@@ -29,6 +29,7 @@ pnpm install --frozen-lockfile
 pnpm check
 pnpm auth:check
 pnpm rls:check
+pnpm fixture:check
 ```
 
 ## Local Database

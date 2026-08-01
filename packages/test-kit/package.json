@@ -13,6 +13,21 @@
       "types": "./dist/auth/two-user-context.d.ts",
       "import": "./dist/auth/two-user-context.js",
       "default": "./dist/auth/two-user-context.js"
+    },
+    "./fixtures/uat-syn-01": {
+      "types": "./dist/fixtures/uat-syn-01.d.ts",
+      "import": "./dist/fixtures/uat-syn-01.js",
+      "default": "./dist/fixtures/uat-syn-01.js"
+    },
+    "./fixtures/uat-syn-01.expected": {
+      "types": "./dist/fixtures/uat-syn-01.expected.d.ts",
+      "import": "./dist/fixtures/uat-syn-01.expected.js",
+      "default": "./dist/fixtures/uat-syn-01.expected.js"
+    },
+    "./contracts/uat-syn-01.schema": {
+      "types": "./dist/contracts/uat-syn-01.schema.d.ts",
+      "import": "./dist/contracts/uat-syn-01.schema.js",
+      "default": "./dist/contracts/uat-syn-01.schema.js"
     }
   },
   "files": [
@@ -21,5 +36,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
   }
 }
