@@ -1,6 +1,6 @@
 # Uygulama Durumu
 
-- Güncellendi: 2026-08-01 23:04 TRT
+- Güncellendi: 2026-08-01 23:06 TRT
 - Son tamamlanan ana aşama: P0-A1 Daily Core (B025–B036; yerel G3 PASS,
   CI/merge bekliyor)
 - Tamamlanan backlog maddeleri: B001–B036
@@ -8,7 +8,7 @@
 - Henüz başlanmayan backlog maddeleri: B037–B104
 - Son doğrulanmış main SHA: `1147eee6878e2d9c5498ece0147bbedce718e12a`
 - Güncel çalışma branch'i: `feat/p0-a1-daily-core-ui`
-- Açık PR: Henüz yok; mevcut PASS branch push ve PR için hazır. PR #9 backend/API
+- Açık PR: #10 `feat/p0-a1-daily-core-ui`; CI çalışıyor. PR #9 backend/API
   dilimi squash merge edildi ve 10/10 CI PASS
 - Son PASS sonuçları: `pnpm check`; 101 unit test; OpenAPI 3.1
   lint/bundle/main breaking diff; P0-A0 ledger regresyonu UAT 16/16 ve INV-01–10;
