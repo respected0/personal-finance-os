@@ -43,6 +43,7 @@ describe("B003 CI policy", () => {
       "contracts / openapi",
       "auth / integration",
       "security / rls",
+      "fixtures / contract",
       "security / secret-scan",
       "database / migration-smoke",
     ];
