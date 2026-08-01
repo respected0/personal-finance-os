@@ -25,6 +25,20 @@ export const localServiceExclusions = [
   "supavisor",
 ].join(",");
 
+export const localAuthServiceExclusions = [
+  "realtime",
+  "storage-api",
+  "imgproxy",
+  "mailpit",
+  "postgrest",
+  "postgres-meta",
+  "studio",
+  "edge-runtime",
+  "logflare",
+  "vector",
+  "supavisor",
+].join(",");
+
 const cliPath = path.join(
   projectRoot,
   "node_modules",
@@ -111,4 +125,10 @@ export function verifySupabaseVersion() {
 
 export function startLocalStack() {
   return runSupabase(["start", "--exclude", localServiceExclusions]);
+}
+
+export function startLocalAuthStack() {
+  return runSupabase(["start", "--exclude", localAuthServiceExclusions], {
+    capture: true,
+  });
 }

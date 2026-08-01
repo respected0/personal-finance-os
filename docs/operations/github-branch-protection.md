@@ -15,10 +15,11 @@ The required status check contexts are exact and stable:
 - `quality / typecheck`
 - `quality / unit`
 - `contracts / openapi`
+- `auth / integration`
 - `security / secret-scan`
 - `database / migration-smoke`
 
-Branch protection requires all seven checks to pass on the latest commit and
+Branch protection requires all eight checks to pass on the latest commit and
 requires the branch to be up to date before merge. Administrators do not bypass
 these checks during normal development.
 
@@ -43,7 +44,7 @@ are recorded in the G1 evidence document.
 Repository administrators apply the following settings to `main`:
 
 - Require a pull request before merging.
-- Require the seven status checks above and require branches to be up to date.
+- Require the eight status checks above and require branches to be up to date.
 - Require conversation resolution.
 - Block force-pushes and deletion.
 - Do not allow bypass of the required checks.

@@ -8,7 +8,7 @@ import {
   sanitizeLogEvent,
   type SafeLogEvent,
   type UnsafeLogEvent,
-} from "./redaction.js";
+} from "./redaction";
 
 export type AppEnvironment = "local" | "test" | "production";
 

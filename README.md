@@ -10,9 +10,10 @@ Bu repository, Kişisel Finans İşletim Sistemi’nin M0 Foundation ilk impleme
 - B004: PostgreSQL 17 / Supabase local migration temeli
 - B005: OpenAPI 3.1, problem details ve breaking-diff sözleşmesi
 - B006: threat model, veri sınıfları ve kontrol sahipliği
+- B007: Supabase Auth invite-only, TOTP AAL2 ve BFF cookie temeli
 - B009: request_id taşıyan structured redacted logging
 
-B007, B008 ve B010 ile P0-A, P0-B ve RC özellikleri bu dilimde
+B008 ve B010 ile P0-A, P0-B ve RC özellikleri bu dilimde
 uygulanmamıştır.
 
 ## Gereksinimler
@@ -25,6 +26,7 @@ uygulanmamıştır.
 ```bash
 pnpm install --frozen-lockfile
 pnpm check
+pnpm auth:check
 ```
 
 ## Local Database

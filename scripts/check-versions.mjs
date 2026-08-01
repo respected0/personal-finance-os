@@ -15,6 +15,9 @@ const errors = [];
 const requiredVersions = new Map([
   ["@typescript/native", "npm:typescript@7.0.2"],
   ["@redocly/cli", "2.41.1"],
+  ["@playwright/test", "1.62.0"],
+  ["@supabase/ssr", "0.12.4"],
+  ["@supabase/supabase-js", "2.111.0"],
   ["@types/node", "24.13.3"],
   ["@types/react", "19.2.18"],
   ["typescript", "npm:@typescript/typescript6@6.0.2"],

@@ -12,15 +12,26 @@ const vitestEntryPoint = path.resolve(
 
 await mkdir(temporaryDirectory, { recursive: true });
 
-const result = spawnSync(process.execPath, [vitestEntryPoint, "run"], {
-  stdio: "inherit",
-  env: {
-    ...process.env,
-    TEMP: temporaryDirectory,
-    TMP: temporaryDirectory,
-    TMPDIR: temporaryDirectory,
+const result = spawnSync(
+  process.execPath,
+  [
+    vitestEntryPoint,
+    "run",
+    "--exclude",
+    "apps/**/tests/e2e/**",
+    "--exclude",
+    "apps/**/tests/integration/**",
+  ],
+  {
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      TEMP: temporaryDirectory,
+      TMP: temporaryDirectory,
+      TMPDIR: temporaryDirectory,
+    },
   },
-});
+);
 
 if (result.error) {
   throw result.error;
