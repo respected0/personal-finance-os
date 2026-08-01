@@ -5,14 +5,18 @@ import {
   problemDetailsSchema,
 } from "../../packages/contracts/src/index.ts";
 
-describe("B005/P0-A0 contract boundary", () => {
-  test("exposes only foundation and approved ledger-kernel paths", async () => {
+describe("B005/P0-A1 contract boundary", () => {
+  test("exposes only approved foundation, ledger and daily-core paths", async () => {
     const specification = await readFile(
       "packages/contracts/openapi/openapi.yaml",
       "utf8",
     );
     const ledgerComponents = await readFile(
       "packages/contracts/openapi/components/ledger.yaml",
+      "utf8",
+    );
+    const dailyCoreComponents = await readFile(
+      "packages/contracts/openapi/components/daily-core.yaml",
       "utf8",
     );
 
@@ -28,13 +32,23 @@ describe("B005/P0-A0 contract boundary", () => {
       "/api/v1/transactions/preview",
       "/api/v1/transactions",
       "/api/v1/transactions/{transactionId}/void",
+      "/api/v1/transactions/{transactionId}",
       "/api/v1/transactions/{transactionId}/revise",
+      "/api/v1/institutions",
+      "/api/v1/accounts",
+      "/api/v1/accounts/{accountId}/opening-balance",
+      "/api/v1/accounts/{accountId}",
+      "/api/v1/accounts/{accountId}/balance",
+      "/api/v1/categories",
     ]);
     expect(specification).not.toMatch(
-      /\/api\/v1\/(accounts|cards|budgets|investments|ledger)/u,
+      /\/api\/v1\/(cards|budgets|investments|ledger|reconciliations|reports)/u,
     );
     expect(ledgerComponents).not.toMatch(
       /\b(userId|user_id|originalPostings|outstandingAmount|availableQuantity|costBasis|alreadyRealized)\b/u,
+    );
+    expect(dailyCoreComponents).not.toMatch(
+      /\b(userId|user_id|name_enc|name_key_id|name_nonce|name_auth_tag)\b/u,
     );
   });
 

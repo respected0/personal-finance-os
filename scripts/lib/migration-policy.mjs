@@ -2,7 +2,10 @@ const destructivePatterns = [
   ["DROP TABLE", /\bdrop\s+table\b/i],
   ["DROP SCHEMA", /\bdrop\s+schema\b/i],
   ["TRUNCATE", /\btruncate\b/i],
-  ["ALTER TABLE ... DROP", /\balter\s+table\b[\s\S]*?\bdrop\b/i],
+  [
+    "ALTER TABLE ... DROP COLUMN/CONSTRAINT",
+    /\balter\s+table\b[\s\S]*?\bdrop\s+(?:column|constraint)\b/i,
+  ],
   ["ALTER TABLE ... RENAME", /\balter\s+table\b[\s\S]*?\brename\b/i],
   ["DELETE FROM", /\bdelete\s+from\b/i],
 ];

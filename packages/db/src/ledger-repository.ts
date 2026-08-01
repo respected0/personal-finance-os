@@ -5,12 +5,15 @@ import {
   previewTransaction,
   resolveLedgerAccount,
   SYSTEM_LEDGER_ROLES,
+  type FinancialAccountKind,
   type LedgerChart,
+  type NonRevisionTransactionCommand,
   type PlannedPosting,
   type PostingPlan,
   type TransactionCommand,
 } from "@personal-finance-os/domain";
 import postgres from "postgres";
+import { applyUserScope } from "./user-scope.js";
 
 export type LedgerSql = ReturnType<typeof postgres>;
 
@@ -52,6 +55,26 @@ export class SerializationRetryExhaustedError extends Error {
   }
 }
 
+export class LedgerReferenceError extends Error {
+  readonly code = "not_found";
+  readonly status = 404;
+
+  constructor() {
+    super("A referenced financial resource was not found or is unavailable.");
+    this.name = "LedgerReferenceError";
+  }
+}
+
+export class PreviewMismatchError extends Error {
+  readonly code = "version_conflict";
+  readonly status = 409;
+
+  constructor() {
+    super("The committed command no longer matches the supplied preview.");
+    this.name = "PreviewMismatchError";
+  }
+}
+
 export function createLedgerSql(
   databaseUrl: string,
   options: { readonly max?: number } = {},
@@ -87,6 +110,61 @@ function eventMetadata(
   };
 }
 
+type StoredAccountKind =
+  "bank" | "cash" | "wallet" | "credit_card" | "investment";
+
+interface AccountReference {
+  readonly id: string;
+  readonly kind: StoredAccountKind;
+}
+
+function storedKind(kind: FinancialAccountKind): StoredAccountKind {
+  return kind === "card" ? "credit_card" : kind;
+}
+
+function accountReferences(
+  command: NonRevisionTransactionCommand,
+): readonly AccountReference[] {
+  switch (command.type) {
+    case "expense":
+      return [
+        { id: command.sourceAccountId, kind: storedKind(command.sourceKind) },
+      ];
+    case "income":
+      return [{ id: command.targetAccountId, kind: command.targetKind }];
+    case "transfer":
+      return [
+        { id: command.sourceAccountId, kind: command.sourceKind },
+        { id: command.targetAccountId, kind: command.targetKind },
+      ];
+    case "card_payment":
+      return [
+        { id: command.bankAccountId, kind: "bank" },
+        { id: command.cardAccountId, kind: "credit_card" },
+      ];
+    case "cashback_refund":
+      return [
+        { id: command.targetAccountId, kind: storedKind(command.targetKind) },
+      ];
+    case "shared_expense":
+      return [
+        {
+          id: command.paymentAccountId,
+          kind: storedKind(command.paymentSourceKind),
+        },
+      ];
+    case "receivable_settlement":
+    case "expected_realization":
+      return [{ id: command.targetAccountId, kind: command.targetKind }];
+    case "investment_buy":
+    case "investment_sell":
+      return [{ id: command.cashAccountId, kind: "bank" }];
+    case "opening_balance":
+    case "balance_adjustment":
+      return [{ id: command.accountId, kind: storedKind(command.accountKind) }];
+  }
+}
+
 export async function provisionSystemLedgerAccounts(
   sql: LedgerSql,
   userId: string,
@@ -115,10 +193,14 @@ export async function commitLedgerTransaction(
   const requestHash = hashTransactionCommand(input.command);
   const commandJson = canonicalCommandJson(input.command);
   const preview = previewTransaction(input.command);
+  if (input.previewHash && input.previewHash !== preview.previewHash) {
+    throw new PreviewMismatchError();
+  }
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       return await sql.begin("isolation level serializable", async (tx) => {
+        await applyUserScope(tx, input.userId);
         const existingRows = await tx<
           {
             readonly request_hash: string;
@@ -178,6 +260,72 @@ export async function commitLedgerTransaction(
         ) as LedgerChart;
         for (const role of SYSTEM_LEDGER_ROLES) {
           resolveLedgerAccount(chart, role);
+        }
+
+        const financialAccountRows = await tx<
+          {
+            readonly id: string;
+            readonly ledger_account_id: string;
+            readonly account_type: string;
+            readonly currency: string;
+            readonly status: string;
+          }[]
+        >`
+          select
+            id::text,
+            ledger_account_id::text,
+            account_type,
+            currency,
+            status
+          from app_private.financial_accounts
+          where user_id = ${input.userId}::uuid
+        `;
+        const financialAccounts = new Map(
+          financialAccountRows.map((row) => [row.id, row]),
+        );
+        const postingAccountIds = new Set(
+          preview.postings.flatMap((posting) =>
+            posting.financialAccountId ? [posting.financialAccountId] : [],
+          ),
+        );
+        for (const accountId of postingAccountIds) {
+          if (!financialAccounts.has(accountId)) {
+            throw new LedgerReferenceError();
+          }
+        }
+
+        const activeCommands =
+          input.command.type === "void"
+            ? []
+            : input.command.type === "revise"
+              ? [input.command.replacement]
+              : [input.command];
+        for (const command of activeCommands) {
+          for (const reference of accountReferences(command)) {
+            const account = financialAccounts.get(reference.id);
+            if (
+              !account ||
+              account.status !== "active" ||
+              account.account_type !== reference.kind ||
+              account.currency.trim() !== command.currency
+            ) {
+              throw new LedgerReferenceError();
+            }
+          }
+          if (command.type === "expense" || command.type === "income") {
+            const categoryRows = await tx`
+              select id
+                from app_private.categories
+               where user_id = ${input.userId}::uuid
+                 and id = ${command.categoryId}::uuid
+                 and category_type = ${command.type}
+                 and active
+               for share
+            `;
+            if (!categoryRows[0]) {
+              throw new LedgerReferenceError();
+            }
+          }
         }
 
         const transactionId = randomUUID();
@@ -248,6 +396,13 @@ export async function commitLedgerTransaction(
         `;
 
         for (const posting of preview.postings) {
+          const ledgerAccountId = posting.financialAccountId
+            ? financialAccounts.get(posting.financialAccountId)
+                ?.ledger_account_id
+            : resolveLedgerAccount(chart, posting.ledgerRole);
+          if (!ledgerAccountId) {
+            throw new LedgerReferenceError();
+          }
           await tx`
             insert into app_private.ledger_postings (
               id,
@@ -266,7 +421,7 @@ export async function commitLedgerTransaction(
               ${randomUUID()}::uuid,
               ${input.userId}::uuid,
               ${transactionId}::uuid,
-              ${resolveLedgerAccount(chart, posting.ledgerRole)}::uuid,
+              ${ledgerAccountId}::uuid,
               ${posting.financialAccountId ?? null}::uuid,
               ${posting.side},
               ${posting.amountOriginal}::numeric,
@@ -309,10 +464,9 @@ export async function commitLedgerTransaction(
         `;
 
         await tx`
-          select id
-            from auth.users
-           where id = ${input.userId}::uuid
-           for update
+          select pg_catalog.pg_advisory_xact_lock(
+            pg_catalog.hashtextextended(${input.userId}, 0)
+          )
         `;
         const previousAuditRows = await tx<{ readonly event_hash: string }[]>`
           select encode(event_hash, 'hex') as event_hash

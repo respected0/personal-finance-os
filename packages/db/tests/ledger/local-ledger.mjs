@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import {
   assertBalanced,
   buildPostingPlan,
@@ -24,11 +24,13 @@ const userB = randomUUID();
 const accountIds = {
   bank: randomUUID(),
   bankTwo: randomUUID(),
+  bankUsd: randomUUID(),
   card: randomUUID(),
   cash: randomUUID(),
   instrument: randomUUID(),
 };
 const categoryId = randomUUID();
+const incomeCategoryId = randomUUID();
 const common = {
   currency: "TRY",
   occurredAt: "2026-07-29T12:00:00+03:00",
@@ -94,6 +96,62 @@ async function commitCase(label, command, overrides = {}) {
   return { input, response };
 }
 
+async function insertSyntheticDailyCoreFixture(chart) {
+  const institutionId = randomUUID();
+  await sql`
+    insert into app_private.institutions (
+      id, user_id, name, institution_type
+    ) values (
+      ${institutionId}::uuid, ${userA}::uuid, 'Sentetik Kurum', 'bank'
+    )
+  `;
+  await sql`
+    insert into app_private.categories (
+      id, user_id, name, category_type, default_ledger_account_id, sort_order
+    ) values
+      (${categoryId}::uuid, ${userA}::uuid, 'Sentetik Gider', 'expense', ${chart.expense}::uuid, 1),
+      (${incomeCategoryId}::uuid, ${userA}::uuid, 'Sentetik Gelir', 'income', ${chart.income}::uuid, 2)
+  `;
+  const accounts = [
+    [accountIds.bank, "6000", "bank", "TRY", "asset", "debit"],
+    [accountIds.bankTwo, "6001", "bank", "TRY", "asset", "debit"],
+    [accountIds.bankUsd, "6002", "bank", "USD", "asset", "debit"],
+    [accountIds.cash, "6003", "cash", "TRY", "asset", "debit"],
+    [accountIds.card, "6004", "credit_card", "TRY", "liability", "credit"],
+  ];
+  for (const [
+    accountId,
+    code,
+    type,
+    currency,
+    accountClass,
+    normalSide,
+  ] of accounts) {
+    const ledgerAccountId = randomUUID();
+    await sql`
+      insert into app_private.ledger_accounts (
+        id, user_id, code, name, account_class, normal_side, system_role,
+        hidden, active
+      ) values (
+        ${ledgerAccountId}::uuid, ${userA}::uuid, ${code},
+        ${`Synthetic ${type}`}, ${accountClass}, ${normalSide}, null, true, true
+      )
+    `;
+    await sql`
+      insert into app_private.financial_accounts (
+        id, user_id, institution_id, ledger_account_id, name_enc,
+        name_key_id, name_algorithm, name_enc_version, name_nonce,
+        name_auth_tag, name_aad_version, account_type, currency, opening_date
+      ) values (
+        ${accountId}::uuid, ${userA}::uuid, ${institutionId}::uuid,
+        ${ledgerAccountId}::uuid, ${Buffer.from("synthetic")}, 'test-key',
+        'AEAD_AES_256_GCM', 1, ${randomBytes(12)}, ${randomBytes(16)}, 1,
+        ${type}, ${currency}, '2026-01-01'::date
+      )
+    `;
+  }
+}
+
 try {
   runSupabase(["stop", "--project-id", "personal-finance-os", "--no-backup"], {
     allowFailure: true,
@@ -126,6 +184,7 @@ try {
     Object.keys(chartB).length === 13,
     "B014 user B chart must have 13 roles.",
   );
+  await insertSyntheticDailyCoreFixture(chartA);
 
   const expense = await commitCase("UAT-01 bank expense", {
     ...common,
@@ -365,7 +424,7 @@ try {
     fxRate: "32.125000000000",
     type: "expense",
     amount: "10.00",
-    sourceAccountId: accountIds.bank,
+    sourceAccountId: accountIds.bankUsd,
     sourceKind: "bank",
     categoryId,
   });
@@ -387,7 +446,7 @@ try {
     amount: "800.00",
     targetAccountId: accountIds.bank,
     targetKind: "bank",
-    categoryId,
+    categoryId: incomeCategoryId,
     incomeClass: "normal",
   });
   await commitCase("B013 opening balance command", {
@@ -521,11 +580,11 @@ try {
           insert into app_private.transactions (
             id, user_id, client_request_id, event_type, status,
             occurred_at, economic_date, primary_amount, primary_currency,
-            engine_version, input_schema_version, input_json, preview_hash,
+            category_id, engine_version, input_schema_version, input_json, preview_hash,
             revision_group_id, posted_at
           ) values (
             ${unbalancedId}::uuid, ${userA}::uuid, ${randomUUID()}::uuid,
-            'expense', 'posted', now(), '2026-07-29'::date, 1.00, 'TRY',
+            'expense', 'posted', now(), '2026-07-29'::date, 1.00, 'TRY', ${categoryId}::uuid,
             'ledger-1.0.0', 1, '{}'::jsonb, ${"a".repeat(64)}, ${randomUUID()}::uuid, now()
           )
         `;
@@ -590,11 +649,11 @@ try {
           insert into app_private.transactions (
             id, user_id, client_request_id, event_type, status,
             occurred_at, economic_date, primary_amount, primary_currency,
-            engine_version, input_schema_version, input_json, preview_hash,
+            category_id, engine_version, input_schema_version, input_json, preview_hash,
             revision_group_id
           ) values (
             ${draftId}::uuid, ${userA}::uuid, ${randomUUID()}::uuid,
-            'expense', 'draft', now(), '2026-07-29'::date, 1.00, 'TRY',
+            'expense', 'draft', now(), '2026-07-29'::date, 1.00, 'TRY', ${categoryId}::uuid,
             'ledger-1.0.0', 1, '{}'::jsonb, ${"b".repeat(64)}, ${randomUUID()}::uuid
           )
         `;
@@ -637,7 +696,6 @@ try {
     "P0-A0 forced RLS table count must be 7.",
   );
 
-  await sql`grant pfos_runtime to postgres`;
   await expectDatabaseRejection(
     () =>
       sql.begin(async (tx) => {

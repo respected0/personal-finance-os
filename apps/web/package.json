@@ -3,14 +3,18 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "pnpm --filter @personal-finance-os/contracts build && pnpm --filter @personal-finance-os/domain build && pnpm --filter @personal-finance-os/db build && next build",
     "dev": "next dev",
     "start": "next start",
     "test:auth:browser": "playwright test --config playwright.config.mjs",
     "test:auth:integration": "node tests/integration/auth/local-auth.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "test:daily-api": "node tests/integration/daily-core/local-api.mjs",
+    "typecheck": "pnpm --filter @personal-finance-os/contracts build && pnpm --filter @personal-finance-os/domain build && pnpm --filter @personal-finance-os/db build && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@personal-finance-os/contracts": "workspace:0.0.0",
+    "@personal-finance-os/db": "workspace:0.0.0",
+    "@personal-finance-os/domain": "workspace:0.0.0",
     "@supabase/ssr": "0.12.4",
     "@supabase/supabase-js": "2.111.0",
     "next": "16.2.12",

@@ -70,6 +70,10 @@ function roleForAccountKind(kind: FinancialAccountKind): LedgerAccountRole {
       return "bank_asset";
     case "cash":
       return "cash_asset";
+    case "wallet":
+      return "bank_asset";
+    case "investment":
+      return "investment_asset";
     case "card":
       return "card_liability";
   }
@@ -149,7 +153,10 @@ function effectsFromPostings(
   let income = Money.zero(REPORTING_CURRENCY);
   for (const posting of postings) {
     const amount = Money.from(posting.amountBase, REPORTING_CURRENCY);
-    if (posting.ledgerRole === "expense") {
+    if (
+      posting.ledgerRole === "expense" ||
+      posting.ledgerRole === "fee_expense"
+    ) {
       expense =
         posting.side === "debit"
           ? expense.add(amount)
@@ -271,6 +278,7 @@ function buildNonRevisionPlan(
           fxRate,
         });
       }
+      effects = effectsFromPostings(plan.postings);
       break;
     }
     case "card_payment": {

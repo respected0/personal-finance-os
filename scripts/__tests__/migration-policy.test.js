@@ -20,6 +20,8 @@ describe("B004 migration policy", () => {
   it.each([
     "drop table example;",
     "truncate example;",
+    "alter table example drop column legacy_value;",
+    "alter table example drop constraint example_value_check;",
     "alter table example rename to renamed;",
     "create table transactions (id uuid);",
     "create extension pgcrypto;",
@@ -27,6 +29,14 @@ describe("B004 migration policy", () => {
     expect(
       findForbiddenMigrationPatterns(sql, { foundation: true }).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("accepts a non-destructive DROP NOT NULL widening", () => {
+    expect(
+      findForbiddenMigrationPatterns(
+        "alter table example alter column optional_value drop not null;",
+      ),
+    ).toEqual([]);
   });
 
   it("rejects row-writing B004 seeds", () => {

@@ -12,6 +12,7 @@ const migrationDirectory = path.join(rootDirectory, "supabase", "migrations");
 const foundationMigrationName = "00000000000000_m0_foundation.sql";
 const rlsHarnessMigrationName = "00000000000001_m0_rls_harness.sql";
 const ledgerKernelMigrationName = "20260801173000_p0_a0_ledger_kernel.sql";
+const dailyCoreMigrationName = "20260801212000_p0_a1_daily_core.sql";
 
 async function read(relativePath) {
   return readFile(path.join(rootDirectory, relativePath), "utf8");
@@ -33,6 +34,9 @@ if (!migrationFiles.includes(rlsHarnessMigrationName)) {
 }
 if (!migrationFiles.includes(ledgerKernelMigrationName)) {
   errors.push(`Eksik P0-A0 ledger migration: ${ledgerKernelMigrationName}.`);
+}
+if (!migrationFiles.includes(dailyCoreMigrationName)) {
+  errors.push(`Eksik P0-A1 daily core migration: ${dailyCoreMigrationName}.`);
 }
 
 const versions = new Set();
@@ -106,6 +110,80 @@ for (const [pattern, message] of [
   ],
 ]) {
   if (!pattern.test(rlsHarnessMigration)) {
+    errors.push(message);
+  }
+}
+
+const dailyCoreMigration = await read(
+  `supabase/migrations/${dailyCoreMigrationName}`,
+);
+for (const [pattern, message] of [
+  [
+    /create\s+table\s+app_identity\.profiles/i,
+    "P0-A1 binding profiles ownership root eksik.",
+  ],
+  [
+    /create\s+trigger\s+auth_user_ensure_profile[\s\S]*app_identity\.ensure_profile_for_auth_user/i,
+    "P0-A1 invite-only auth user profile bootstrap trigger'ı eksik.",
+  ],
+  [
+    /alter\s+table\s+app_identity\.profiles\s+force\s+row\s+level\s+security/i,
+    "P0-A1 profiles forced RLS açık değil.",
+  ],
+  [
+    /foreign\s+key\s*\(user_id\)\s+references\s+app_identity\.profiles/i,
+    "P0-A1 ürün sahipliği profiles köküne bağlı değil.",
+  ],
+  [
+    /create\s+table\s+app_private\.institutions/i,
+    "B025 institutions tablosu eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.financial_accounts/i,
+    "B025 financial_accounts tablosu eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.categories/i,
+    "B027/B028 categories tablosu eksik.",
+  ],
+  [
+    /alter\s+column\s+system_role\s+drop\s+not\s+null/i,
+    "B025 account-specific ledger hesabı için system_role nullable değil.",
+  ],
+  [
+    /unique\s*\(user_id\s*,\s*ledger_account_id\s*\)/i,
+    "B025 financial account benzersiz ledger bağı eksik.",
+  ],
+  [
+    /foreign\s+key\s*\(user_id\s*,\s*financial_account_id\s*,\s*ledger_account_id\s*\)[\s\S]*references\s+app_private\.financial_accounts/i,
+    "B025 posting/account/ledger composite FK eksik.",
+  ],
+  [
+    /foreign\s+key\s*\(user_id\s*,\s*category_id\s*\)[\s\S]*references\s+app_private\.categories/i,
+    "B027/B028 transaction/category composite FK eksik.",
+  ],
+  [
+    /name_algorithm[\s\S]*AEAD_AES_256_GCM[\s\S]*name_nonce[\s\S]*octet_length\(name_nonce\)\s*=\s*12[\s\S]*name_auth_tag/i,
+    "B025 account adı AEAD envelope metadata sözleşmesi eksik.",
+  ],
+  [
+    /create\s+unique\s+index\s+transactions_single_opening_account_idx/i,
+    "B026 tek açılış işlemi DB invariant'ı eksik.",
+  ],
+  [
+    /alter\s+table\s+app_private\.financial_accounts\s+force\s+row\s+level\s+security/i,
+    "B025 financial_accounts forced RLS açık değil.",
+  ],
+  [
+    /create\s+policy\s+financial_accounts_runtime_own[\s\S]*auth\.uid\(\)/i,
+    "B025 financial_accounts owner RLS policy eksik.",
+  ],
+  [
+    /daily core entities are archived, never hard-deleted/i,
+    "B025 archive-only lifecycle trigger'ı eksik.",
+  ],
+]) {
+  if (!pattern.test(dailyCoreMigration)) {
     errors.push(message);
   }
 }

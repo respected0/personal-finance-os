@@ -1,0 +1,272 @@
+DailyUuid:
+  type: string
+  format: uuid
+
+DailyIsoDate:
+  type: string
+  format: date
+
+DailyIsoDateTime:
+  type: string
+  format: date-time
+
+DailyCurrencyCode:
+  type: string
+  pattern: "^[A-Z]{3}$"
+
+DailyMoneyString:
+  type: string
+  pattern: "^-?(?:0|[1-9][0-9]{0,14})\\.[0-9]{1,4}$"
+
+DailyPositiveMoneyString:
+  type: string
+  pattern: "^(?:0|[1-9][0-9]{0,14})\\.[0-9]{1,4}$"
+
+InstitutionCreate:
+  type: object
+  additionalProperties: false
+  required: [name, institutionType]
+  properties:
+    name: { type: string, minLength: 1, maxLength: 120 }
+    institutionType: { enum: [bank, wallet, broker, other] }
+
+Institution:
+  allOf:
+    - $ref: "#/InstitutionCreate"
+    - type: object
+      additionalProperties: false
+      required: [id, active, rowVersion]
+      properties:
+        id: { $ref: "#/DailyUuid" }
+        active: { type: boolean }
+        rowVersion: { type: integer, minimum: 1 }
+
+AccountCreate:
+  type: object
+  additionalProperties: false
+  required: [name, accountType, currency, openingDate]
+  properties:
+    institutionId: { $ref: "#/DailyUuid" }
+    name: { type: string, minLength: 1, maxLength: 120 }
+    accountType: { enum: [bank, cash, wallet, credit_card, investment] }
+    currency: { $ref: "#/DailyCurrencyCode" }
+    openingDate: { $ref: "#/DailyIsoDate" }
+
+AccountBalance:
+  type: object
+  additionalProperties: false
+  required: [accountId, currency, asOf, calculatedOriginal, calculatedBase]
+  properties:
+    accountId: { $ref: "#/DailyUuid" }
+    currency: { $ref: "#/DailyCurrencyCode" }
+    asOf:
+      oneOf:
+        - { $ref: "#/DailyIsoDate" }
+        - { type: "null" }
+    calculatedOriginal: { $ref: "#/DailyMoneyString" }
+    calculatedBase: { $ref: "#/DailyMoneyString" }
+
+FinancialAccount:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      ledgerAccountId,
+      name,
+      accountType,
+      currency,
+      openingDate,
+      status,
+      rowVersion,
+      balance,
+    ]
+  properties:
+    id: { $ref: "#/DailyUuid" }
+    institutionId:
+      oneOf:
+        - { $ref: "#/DailyUuid" }
+        - { type: "null" }
+    ledgerAccountId: { $ref: "#/DailyUuid" }
+    name: { type: string, minLength: 1, maxLength: 120 }
+    accountType: { enum: [bank, cash, wallet, credit_card, investment] }
+    currency: { $ref: "#/DailyCurrencyCode" }
+    openingDate: { $ref: "#/DailyIsoDate" }
+    status: { enum: [active, archived] }
+    rowVersion: { type: integer, minimum: 1 }
+    balance: { $ref: "#/AccountBalance" }
+
+OpeningBalanceRequest:
+  type: object
+  additionalProperties: false
+  required: [amount, currency, date]
+  properties:
+    amount: { $ref: "#/DailyPositiveMoneyString" }
+    currency: { $ref: "#/DailyCurrencyCode" }
+    date: { $ref: "#/DailyIsoDate" }
+
+AccountArchiveRequest:
+  type: object
+  additionalProperties: false
+  required: [status]
+  properties:
+    status: { type: string, const: archived }
+
+Category:
+  type: object
+  additionalProperties: false
+  required: [id, name, categoryType, active, sortOrder, rowVersion]
+  properties:
+    id: { $ref: "#/DailyUuid" }
+    name: { type: string, minLength: 1, maxLength: 120 }
+    categoryType: { enum: [income, expense] }
+    active: { type: boolean }
+    sortOrder: { type: integer }
+    rowVersion: { type: integer, minimum: 1 }
+
+CategoryCreate:
+  type: object
+  additionalProperties: false
+  required: [name, categoryType]
+  properties:
+    name: { type: string, minLength: 1, maxLength: 120 }
+    categoryType: { enum: [income, expense] }
+    sortOrder: { type: integer }
+
+TransactionHistoryItem:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      type,
+      occurredAt,
+      economicDate,
+      amount,
+      currency,
+      categoryId,
+      engineVersion,
+    ]
+  properties:
+    id: { $ref: "#/DailyUuid" }
+    type: { type: string }
+    occurredAt: { $ref: "#/DailyIsoDateTime" }
+    economicDate: { $ref: "#/DailyIsoDate" }
+    amount: { $ref: "#/DailyPositiveMoneyString" }
+    currency: { $ref: "#/DailyCurrencyCode" }
+    categoryId:
+      oneOf:
+        - { $ref: "#/DailyUuid" }
+        - { type: "null" }
+    engineVersion: { type: string, minLength: 1 }
+
+TransactionHistoryPage:
+  type: object
+  additionalProperties: false
+  required: [items, nextCursor, aggregate]
+  properties:
+    items:
+      type: array
+      items: { $ref: "#/TransactionHistoryItem" }
+    nextCursor:
+      oneOf:
+        - { type: string, minLength: 1 }
+        - { type: "null" }
+    aggregate:
+      type: object
+      additionalProperties: false
+      required: [personalExpense, normalIncome, net]
+      properties:
+        personalExpense: { $ref: "#/DailyMoneyString" }
+        normalIncome: { $ref: "#/DailyMoneyString" }
+        net: { $ref: "#/DailyMoneyString" }
+
+TransactionDetail:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      type,
+      status,
+      occurredAt,
+      economicDate,
+      amount,
+      currency,
+      categoryId,
+      engineVersion,
+      inputSchemaVersion,
+      revisionGroupId,
+      reversesTransactionId,
+      postings,
+      links,
+      audit,
+    ]
+  properties:
+    id: { $ref: "#/DailyUuid" }
+    type: { type: string }
+    status: { enum: [posted, voided] }
+    occurredAt: { $ref: "#/DailyIsoDateTime" }
+    economicDate: { $ref: "#/DailyIsoDate" }
+    amount: { $ref: "#/DailyPositiveMoneyString" }
+    currency: { $ref: "#/DailyCurrencyCode" }
+    categoryId:
+      oneOf:
+        - { $ref: "#/DailyUuid" }
+        - { type: "null" }
+    engineVersion: { type: string }
+    inputSchemaVersion: { type: integer, minimum: 1 }
+    revisionGroupId: { $ref: "#/DailyUuid" }
+    reversesTransactionId:
+      oneOf:
+        - { $ref: "#/DailyUuid" }
+        - { type: "null" }
+    postings:
+      type: array
+      minItems: 2
+      items:
+        type: object
+        additionalProperties: false
+        required:
+          [
+            financialAccountId,
+            role,
+            side,
+            amountOriginal,
+            currency,
+            fxRate,
+            amountBase,
+            sequence,
+          ]
+        properties:
+          financialAccountId:
+            oneOf:
+              - { $ref: "#/DailyUuid" }
+              - { type: "null" }
+          role: { type: string }
+          side: { enum: [debit, credit] }
+          amountOriginal: { $ref: "#/DailyPositiveMoneyString" }
+          currency: { $ref: "#/DailyCurrencyCode" }
+          fxRate: { type: string, pattern: "^[0-9]+\\.[0-9]{1,12}$" }
+          amountBase: { $ref: "#/DailyPositiveMoneyString" }
+          sequence: { type: integer, minimum: 1 }
+    links:
+      type: array
+      items:
+        type: object
+        additionalProperties: false
+        required: [relatedTransactionId, linkType, allocatedAmount]
+        properties:
+          relatedTransactionId: { $ref: "#/DailyUuid" }
+          linkType: { type: string }
+          allocatedAmount:
+            oneOf:
+              - { $ref: "#/DailyPositiveMoneyString" }
+              - { type: "null" }
+    audit:
+      type: object
+      additionalProperties: false
+      required: [eventCount, lastOccurredAt]
+      properties:
+        eventCount: { type: integer, minimum: 1 }
+        lastOccurredAt: { $ref: "#/DailyIsoDateTime" }

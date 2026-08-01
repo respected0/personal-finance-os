@@ -10,6 +10,13 @@ import {
 } from "./primitives.js";
 
 const accountKindSchema = z.enum(["bank", "cash", "card"]);
+const openingAccountKindSchema = z.enum([
+  "bank",
+  "cash",
+  "card",
+  "wallet",
+  "investment",
+]);
 const assetAccountKindSchema = z.enum(["bank", "cash"]);
 const ledgerRoleSchema = z.enum([
   "bank_asset",
@@ -168,7 +175,7 @@ export const openingBalanceCommandSchema = z
     type: z.literal("opening_balance"),
     amount: positiveMoneyStringSchema,
     accountId: uuidSchema,
-    accountKind: accountKindSchema,
+    accountKind: openingAccountKindSchema,
   })
   .strict();
 
@@ -179,7 +186,7 @@ export const balanceAdjustmentCommandSchema = z
     amount: positiveMoneyStringSchema,
     direction: z.enum(["increase", "decrease"]),
     accountId: uuidSchema,
-    accountKind: accountKindSchema,
+    accountKind: openingAccountKindSchema,
     reason: z.string().trim().min(1).max(500),
     reconciliationId: uuidSchema.optional(),
   })
@@ -217,6 +224,16 @@ export const reviseRequestSchema = z
   .strict();
 
 export const transactionCommandSchema = nonRevisionTransactionCommandSchema;
+
+export const transactionCommitRequestSchema = z
+  .object({
+    command: transactionCommandSchema,
+    previewHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+  })
+  .strict();
 
 export const transactionPreviewSchema = z
   .object({

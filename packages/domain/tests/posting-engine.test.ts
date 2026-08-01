@@ -179,6 +179,25 @@ describe("B013-B015 transaction commands and posting templates", () => {
     expect(() => assertBalanced(plan.postings)).not.toThrow();
   });
 
+  test("transfer fee is an expense while transfer principal remains neutral", () => {
+    const plan = buildPostingPlan({
+      ...common,
+      type: "transfer",
+      amount: "1000.00",
+      feeAmount: "2.50",
+      sourceAccountId: id("1"),
+      sourceKind: "bank",
+      targetAccountId: id("3"),
+      targetKind: "cash",
+    });
+    expect(plan.effects).toEqual({
+      personalExpenseDelta: "2.50",
+      normalIncomeDelta: "0.00",
+      netWorthDelta: "-2.50",
+    });
+    expect(plan.postings).toHaveLength(4);
+  });
+
   test("preview is pure, deterministic, and uses the production engine", () => {
     const first = previewTransaction(expense);
     const second = previewTransaction(structuredClone(expense));

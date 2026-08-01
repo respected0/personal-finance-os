@@ -230,7 +230,7 @@ OpeningBalanceCommand:
         type: { const: opening_balance }
         amount: { $ref: "#/PositiveMoneyString" }
         accountId: { $ref: "#/Uuid" }
-        accountKind: { enum: [bank, cash, card] }
+        accountKind: { enum: [bank, cash, card, wallet, investment] }
   unevaluatedProperties: false
 
 BalanceAdjustmentCommand:
@@ -243,7 +243,7 @@ BalanceAdjustmentCommand:
         amount: { $ref: "#/PositiveMoneyString" }
         direction: { enum: [increase, decrease] }
         accountId: { $ref: "#/Uuid" }
-        accountKind: { enum: [bank, cash, card] }
+        accountKind: { enum: [bank, cash, card, wallet, investment] }
         reason: { type: string, minLength: 1, maxLength: 500 }
         reconciliationId: { $ref: "#/Uuid" }
   unevaluatedProperties: false
