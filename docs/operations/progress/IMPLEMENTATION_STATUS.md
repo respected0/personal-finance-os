@@ -1,6 +1,6 @@
 # Uygulama Durumu
 
-- Güncellendi: 2026-08-01 22:28 TRT
+- Güncellendi: 2026-08-01 22:34 TRT
 - Son tamamlanan ana aşama: P0-A0 Ledger Kernel (G2 PASS; PR #8 merged)
 - Tamamlanan backlog maddeleri: B001–B024
 - Devam eden backlog maddesi: P0-A1 B025–B036; backend/API dilimi B025–B029,
@@ -8,14 +8,19 @@
 - Henüz başlanmayan backlog maddeleri: B030–B031, B033, B035–B104
 - Son doğrulanmış main SHA: `b58c1d8a202a4ec4455ae97b1c6ea5a4c4a09083`
 - Güncel çalışma branch'i: `feat/p0-a1-daily-core-backend`
-- Açık PR: Yok; backend/API dilimi yerelde PASS, commit/PR sırası bekliyor
+- Açık PR: #9; backend/API dilimi, ilk temiz-runner build düzeltmesi yerelde
+  doğrulanıyor
 - Son PASS sonuçları: `pnpm check`; 100 unit test; OpenAPI 3.1
   lint/bundle/main breaking diff; P0-A0 ledger regresyonu UAT 16/16 ve INV-01–10;
   P0-A1 gerçek DB kabulü; gerçek BFF/Auth/TOTP kabulü; Auth ve RLS regresyonu;
   fresh migration; iki reset checksum
   `8f79bd27f9d72ae77a1fe417a47cfd5ac8296b3d362bb78e943cce90861758a0`;
   schema drift 0; PostgreSQL 17.6; Supabase CLI 2.110.0; secret scan 0
-- Son FAIL komutu ve kök nedeni: `pnpm daily:api:integration` ilk denemelerinde
+- Son FAIL komutu ve kök nedeni: PR #9 ilk `auth / integration` CI çalışmasında
+  temiz runner'da workspace `dist` çıktıları henüz yokken doğrudan `next build`
+  çalıştırdığı için `@personal-finance-os/db` ve domain çözümleyemedi; web build
+  scripti kendi workspace build öncüllerini çalıştıracak şekilde düzeltildi.
+  Daha önce `pnpm daily:api:integration` ilk denemelerinde
   proxy origin karşılaştırması ve test cookie'sinin bağlayıcı `pfos_session` adını
   kullanmaması nedeniyle 403/401 üretti; host-origin doğrulaması ve aynı cookie
   politikasıyla düzeltildi, tekrar PASS. Profil ekinden sonraki ilk `db:smoke`,
@@ -29,9 +34,9 @@
   beri değişmedi. P0-A1 gate, bağlayıcı dinamik form/history/dashboard ve
   desktop+390×844 E2E tamamlanmadan PASS sayılmayacak.
 - Dış kaynak veya kullanıcı kararı bekleyen maddeler: Yok
-- Bir sonraki kesin adım: Backend/API dilimini commit edip PR CI kontrollerinden
-  geçir; main'e birleştirdikten sonra güncel main'den P0-A1 UI/E2E branch'i aç
-- Devam etmek için ilk komut: `git diff --check && pnpm check`
+- Bir sonraki kesin adım: PR #9 düzeltmesini push et, zorunlu CI kontrollerinin
+  tamamını doğrula ve main'e birleştir; ardından P0-A1 UI/E2E branch'i aç
+- Devam etmek için ilk komut: `git status --short --branch && gh pr checks 9`
 
 ## Bağlayıcı kapılar
 

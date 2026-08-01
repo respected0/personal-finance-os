@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "pnpm --filter @personal-finance-os/contracts build && pnpm --filter @personal-finance-os/domain build && pnpm --filter @personal-finance-os/db build && next build",
     "dev": "next dev",
     "start": "next start",
     "test:auth:browser": "playwright test --config playwright.config.mjs",
