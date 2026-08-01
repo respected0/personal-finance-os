@@ -5,6 +5,7 @@ import {
   check,
   customType,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -29,6 +30,23 @@ const bytea = customType<{ data: Uint8Array }>({
 });
 
 export const appPrivate = pgSchema("app_private");
+export const appIdentity = pgSchema("app_identity");
+
+export const profiles = appIdentity.table("profiles", {
+  id: uuid().primaryKey(),
+  reportingCurrency: char("reporting_currency", { length: 3 })
+    .notNull()
+    .default("TRY"),
+  locale: text().notNull().default("tr-TR"),
+  timezone: text().notNull().default("Europe/Istanbul"),
+  status: text().notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 export const ledgerAccounts = appPrivate.table(
   "ledger_accounts",
@@ -39,7 +57,7 @@ export const ledgerAccounts = appPrivate.table(
     name: text().notNull(),
     accountClass: text("account_class").notNull(),
     normalSide: text("normal_side").notNull(),
-    systemRole: text("system_role").notNull(),
+    systemRole: text("system_role"),
     hidden: boolean().notNull().default(true),
     active: boolean().notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -57,6 +75,136 @@ export const ledgerAccounts = appPrivate.table(
       table.systemRole,
     ),
     index("ledger_accounts_user_active_idx").on(table.userId, table.active),
+  ],
+);
+
+export const institutions = appPrivate.table(
+  "institutions",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    name: text().notNull(),
+    institutionType: text("institution_type").notNull(),
+    active: boolean().notNull().default(true),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("institutions_user_id_unique").on(table.userId, table.id),
+    index("institutions_user_active_idx").on(
+      table.userId,
+      table.active,
+      table.name,
+    ),
+  ],
+);
+
+export const categories = appPrivate.table(
+  "categories",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    parentId: uuid("parent_id"),
+    name: text().notNull(),
+    categoryType: text("category_type").notNull(),
+    defaultLedgerAccountId: uuid("default_ledger_account_id").notNull(),
+    active: boolean().notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("categories_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("categories_user_name_type_unique").on(
+      table.userId,
+      table.name,
+      table.categoryType,
+    ),
+    index("categories_user_type_active_idx").on(
+      table.userId,
+      table.categoryType,
+      table.active,
+      table.sortOrder,
+      table.name,
+    ),
+    foreignKey({
+      columns: [table.userId, table.parentId],
+      foreignColumns: [table.userId, table.id],
+      name: "categories_parent_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.defaultLedgerAccountId],
+      foreignColumns: [ledgerAccounts.userId, ledgerAccounts.id],
+      name: "categories_default_ledger_account_fk",
+    }),
+  ],
+);
+
+export const financialAccounts = appPrivate.table(
+  "financial_accounts",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    institutionId: uuid("institution_id"),
+    ledgerAccountId: uuid("ledger_account_id").notNull(),
+    nameEnc: bytea("name_enc").notNull(),
+    nameKeyId: text("name_key_id").notNull(),
+    nameAlgorithm: text("name_algorithm").notNull(),
+    nameEncVersion: smallint("name_enc_version").notNull().default(1),
+    nameNonce: bytea("name_nonce").notNull(),
+    nameAuthTag: bytea("name_auth_tag").notNull(),
+    nameAadVersion: smallint("name_aad_version").notNull().default(1),
+    accountType: text("account_type").notNull(),
+    currency: char({ length: 3 }).notNull(),
+    openingDate: date("opening_date").notNull(),
+    status: text().notNull().default("active"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("financial_accounts_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("financial_accounts_user_ledger_unique").on(
+      table.userId,
+      table.ledgerAccountId,
+    ),
+    uniqueIndex("financial_accounts_user_id_ledger_unique").on(
+      table.userId,
+      table.id,
+      table.ledgerAccountId,
+    ),
+    index("financial_accounts_user_status_idx").on(
+      table.userId,
+      table.status,
+      table.accountType,
+      table.createdAt,
+    ),
+    foreignKey({
+      columns: [table.userId, table.institutionId],
+      foreignColumns: [institutions.userId, institutions.id],
+      name: "financial_accounts_institution_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.ledgerAccountId],
+      foreignColumns: [ledgerAccounts.userId, ledgerAccounts.id],
+      name: "financial_accounts_ledger_account_fk",
+    }),
   ],
 );
 
@@ -121,6 +269,11 @@ export const transactions = appPrivate.table(
       "transactions_primary_amount_positive",
       sql`${table.primaryAmount} > 0`,
     ),
+    foreignKey({
+      columns: [table.userId, table.categoryId],
+      foreignColumns: [categories.userId, categories.id],
+      name: "transactions_category_fk",
+    }),
   ],
 );
 
@@ -171,6 +324,15 @@ export const ledgerPostings = appPrivate.table(
     ),
     check("ledger_postings_amount_base_positive", sql`${table.amountBase} > 0`),
     check("ledger_postings_fx_rate_positive", sql`${table.fxRate} > 0`),
+    foreignKey({
+      columns: [table.userId, table.financialAccountId, table.ledgerAccountId],
+      foreignColumns: [
+        financialAccounts.userId,
+        financialAccounts.id,
+        financialAccounts.ledgerAccountId,
+      ],
+      name: "ledger_postings_financial_account_fk",
+    }),
   ],
 );
 

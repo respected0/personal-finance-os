@@ -1,6 +1,9 @@
 import type { LedgerAccountRole, LedgerSide } from "./chart-of-accounts.js";
 
-export type FinancialAccountKind = "bank" | "cash" | "card";
+export type FinancialAccountKind =
+  "bank" | "cash" | "card" | "wallet" | "investment";
+
+export type PaymentAccountKind = "bank" | "cash" | "card";
 
 export interface OriginalPosting {
   readonly ledgerRole: LedgerAccountRole;
@@ -23,7 +26,7 @@ export interface ExpenseCommand extends BaseCommand {
   readonly type: "expense";
   readonly amount: string;
   readonly sourceAccountId: string;
-  readonly sourceKind: FinancialAccountKind;
+  readonly sourceKind: PaymentAccountKind;
   readonly categoryId: string;
 }
 
@@ -57,7 +60,7 @@ export interface CashbackRefundCommand extends BaseCommand {
   readonly type: "cashback_refund";
   readonly amount: string;
   readonly targetAccountId: string;
-  readonly targetKind: FinancialAccountKind;
+  readonly targetKind: PaymentAccountKind;
   readonly relatedTransactionId: string;
   readonly relatedExpenseRemaining: string;
   readonly subscriptionId?: string;
@@ -74,7 +77,7 @@ export interface SharedExpenseCommand extends BaseCommand {
   readonly ownerShare: string;
   readonly shares: readonly SharedExpenseShare[];
   readonly paymentAccountId: string;
-  readonly paymentSourceKind: FinancialAccountKind;
+  readonly paymentSourceKind: PaymentAccountKind;
 }
 
 export interface ReceivableSettlementCommand extends BaseCommand {

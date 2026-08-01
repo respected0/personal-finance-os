@@ -253,6 +253,24 @@ describe("B015 posting engine branch matrix", () => {
       "credit",
       "debit",
     ]);
+    expect(
+      buildPostingPlan({
+        ...common,
+        type: "opening_balance",
+        amount: "10.00",
+        accountId: id("8"),
+        accountKind: "wallet",
+      }).postings[0]?.ledgerRole,
+    ).toBe("bank_asset");
+    expect(
+      buildPostingPlan({
+        ...common,
+        type: "opening_balance",
+        amount: "10.00",
+        accountId: id("9"),
+        accountKind: "investment",
+      }).postings[0]?.ledgerRole,
+    ).toBe("investment_asset");
 
     const sides = (
       direction: "increase" | "decrease",

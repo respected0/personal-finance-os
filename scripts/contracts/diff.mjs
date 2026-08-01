@@ -21,6 +21,8 @@ const baseCandidates = [...new Set([requestedBase, "origin/main", "main"])];
 const contractFiles = [
   "packages/contracts/openapi/openapi.yaml",
   "packages/contracts/openapi/components/problem-details.yaml",
+  "packages/contracts/openapi/components/ledger.yaml",
+  "packages/contracts/openapi/components/daily-core.yaml",
 ];
 let selectedBase;
 let baseRoot;
@@ -50,8 +52,12 @@ await writeFile(path.join(baseDirectory, "openapi.yaml"), baseRoot, "utf8");
 
 for (const contractFile of contractFiles.slice(1)) {
   const result = run("git", ["show", `${selectedBase}:${contractFile}`], {
+    allowFailure: true,
     quiet: true,
   });
+  if (result.status !== 0) {
+    continue;
+  }
   await writeFile(
     path.join(baseDirectory, "components", path.basename(contractFile)),
     result.stdout,

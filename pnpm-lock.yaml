@@ -44,6 +44,15 @@ importers:
 
   apps/web:
     dependencies:
+      '@personal-finance-os/contracts':
+        specifier: workspace:0.0.0
+        version: link:../../packages/contracts
+      '@personal-finance-os/db':
+        specifier: workspace:0.0.0
+        version: link:../../packages/db
+      '@personal-finance-os/domain':
+        specifier: workspace:0.0.0
+        version: link:../../packages/domain
       '@supabase/ssr':
         specifier: 0.12.4
         version: 0.12.4(@supabase/supabase-js@2.111.0)

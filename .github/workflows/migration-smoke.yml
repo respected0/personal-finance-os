@@ -53,6 +53,14 @@ jobs:
         run: |
           set -o pipefail
           pnpm ledger:integration 2>&1 | tee .tmp/ci/ledger-acceptance.log
+      - name: Verify P0-A1 daily core database acceptance
+        run: |
+          set -o pipefail
+          pnpm daily:integration 2>&1 | tee .tmp/ci/daily-core-acceptance.log
+      - name: Verify P0-A1 BFF acceptance
+        run: |
+          set -o pipefail
+          pnpm daily:api:integration 2>&1 | tee .tmp/ci/daily-api-acceptance.log
       - name: Upload migration smoke report
         if: ${{ always() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
@@ -62,5 +70,7 @@ jobs:
             .tmp/ci/migration-smoke.log
             .tmp/ci/ledger-coverage.log
             .tmp/ci/ledger-acceptance.log
+            .tmp/ci/daily-core-acceptance.log
+            .tmp/ci/daily-api-acceptance.log
           if-no-files-found: error
           retention-days: 14

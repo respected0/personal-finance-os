@@ -2,11 +2,11 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: Personal Finance OS API
-  summary: Versioned foundation and ledger command contract
+  summary: Versioned foundation, ledger and daily-core contract
   description: >-
     Local and future server contract. P0-A0 exposes typed preview and commit
     boundaries; clients never submit ledger postings or owner identifiers.
-  version: 1.1.0
+  version: 1.2.0
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
@@ -20,6 +20,10 @@ tags:
     description: Non-financial platform health and contract metadata
   - name: Transactions
     description: AAL2 typed financial commands backed by one ledger engine
+  - name: Accounts
+    description: Owned institutions, financial accounts and ledger-derived balances
+  - name: Categories
+    description: Owned income and expense classification references
 paths:
   /api/v1/health:
     get:
@@ -77,6 +81,28 @@ paths:
         "500":
           $ref: "#/components/responses/ProblemResponse"
   /api/v1/transactions:
+    get:
+      operationId: listTransactions
+      summary: Read cursor-based owned transaction history and exact aggregate
+      tags: [Transactions]
+      x-required-aal: aal1
+      parameters:
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/PeriodFrom" }
+        - { $ref: "#/components/parameters/PeriodTo" }
+        - { $ref: "#/components/parameters/TransactionType" }
+        - { $ref: "#/components/parameters/AccountFilter" }
+        - { $ref: "#/components/parameters/CategoryFilter" }
+        - { $ref: "#/components/parameters/PageLimit" }
+      responses:
+        "200":
+          description: Filtered history and aggregate from the posted ledger
+          content:
+            application/json:
+              schema:
+                $ref: "./components/daily-core.yaml#/TransactionHistoryPage"
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
     post:
       operationId: commitTransaction
       summary: Atomically commit a typed transaction command
@@ -160,6 +186,23 @@ paths:
           $ref: "#/components/responses/ProblemResponse"
         "422":
           $ref: "#/components/responses/ProblemResponse"
+  /api/v1/transactions/{transactionId}:
+    get:
+      operationId: getTransaction
+      summary: Read an owned transaction with postings, links and audit summary
+      tags: [Transactions]
+      x-required-aal: aal1
+      parameters:
+        - { $ref: "#/components/parameters/TransactionId" }
+      responses:
+        "200":
+          description: Owned transaction detail
+          content:
+            application/json:
+              schema:
+                { $ref: "./components/daily-core.yaml#/TransactionDetail" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
   /api/v1/transactions/{transactionId}/revise:
     post:
       operationId: reviseTransaction
@@ -197,6 +240,186 @@ paths:
           $ref: "#/components/responses/ProblemResponse"
         "422":
           $ref: "#/components/responses/ProblemResponse"
+  /api/v1/institutions:
+    get:
+      operationId: listInstitutions
+      summary: List owned active institutions
+      tags: [Accounts]
+      x-required-aal: aal1
+      responses:
+        "200":
+          description: Owned institutions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "./components/daily-core.yaml#/Institution" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+    post:
+      operationId: createInstitution
+      summary: Create an owned institution reference
+      tags: [Accounts]
+      x-required-aal: aal2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./components/daily-core.yaml#/InstitutionCreate" }
+      responses:
+        "201":
+          description: Institution created
+          content:
+            application/json:
+              schema: { $ref: "./components/daily-core.yaml#/Institution" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/accounts:
+    get:
+      operationId: listAccounts
+      summary: List owned accounts with ledger-derived current balances
+      tags: [Accounts]
+      x-required-aal: aal1
+      responses:
+        "200":
+          description: Owned accounts and balances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  { $ref: "./components/daily-core.yaml#/FinancialAccount" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+    post:
+      operationId: createAccount
+      summary: Create an account and its unique ledger subaccount
+      tags: [Accounts]
+      x-required-aal: aal2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./components/daily-core.yaml#/AccountCreate" }
+      responses:
+        "201":
+          description: Account created without an implicit opening balance
+          content:
+            application/json:
+              schema: { $ref: "./components/daily-core.yaml#/FinancialAccount" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/accounts/{accountId}/opening-balance:
+    post:
+      operationId: createOpeningBalance
+      summary: Commit one opening-equity transaction for an owned account
+      tags: [Accounts]
+      x-required-aal: aal2
+      parameters:
+        - { $ref: "#/components/parameters/AccountId" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "./components/daily-core.yaml#/OpeningBalanceRequest" }
+      responses:
+        "200":
+          description: Idempotent replay
+          content:
+            application/json:
+              schema:
+                { $ref: "./components/ledger.yaml#/TransactionCommitResponse" }
+        "201":
+          description: Opening balance committed; period income and expense remain zero
+          content:
+            application/json:
+              schema:
+                { $ref: "./components/ledger.yaml#/TransactionCommitResponse" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
+        "409": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/accounts/{accountId}:
+    patch:
+      operationId: archiveAccount
+      summary: Archive an owned account using optimistic concurrency
+      tags: [Accounts]
+      x-required-aal: aal2
+      parameters:
+        - { $ref: "#/components/parameters/AccountId" }
+        - { $ref: "#/components/parameters/IfMatch" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "./components/daily-core.yaml#/AccountArchiveRequest" }
+      responses:
+        "200":
+          description: Account archived; historical ledger rows remain readable
+          content:
+            application/json:
+              schema: { $ref: "./components/daily-core.yaml#/FinancialAccount" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
+        "409": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/accounts/{accountId}/balance:
+    get:
+      operationId: getAccountBalance
+      summary: Read the exact ledger-derived owned account balance
+      tags: [Accounts]
+      x-required-aal: aal1
+      parameters:
+        - { $ref: "#/components/parameters/AccountId" }
+        - name: as_of
+          in: query
+          schema: { $ref: "#/components/schemas/IsoDate" }
+      responses:
+        "200":
+          description: Original and TRY base balance from posted ledger rows
+          content:
+            application/json:
+              schema: { $ref: "./components/daily-core.yaml#/AccountBalance" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/categories:
+    get:
+      operationId: listCategories
+      summary: List owned active transaction categories
+      tags: [Categories]
+      x-required-aal: aal1
+      parameters:
+        - name: type
+          in: query
+          schema: { enum: [income, expense] }
+      responses:
+        "200":
+          description: Active categories mapped to fixed ledger roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "./components/daily-core.yaml#/Category" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+    post:
+      operationId: createCategory
+      summary: Create an owned category mapped to its fixed ledger role
+      tags: [Categories]
+      x-required-aal: aal2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./components/daily-core.yaml#/CategoryCreate" }
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema: { $ref: "./components/daily-core.yaml#/Category" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
 components:
   securitySchemes:
     cookieAuth:
@@ -218,6 +441,46 @@ components:
       description: Owned transaction UUID; invisible cross-user IDs return not_found.
       schema:
         $ref: "#/components/schemas/Uuid"
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: Owned financial account UUID; cross-user IDs are invisible.
+      schema: { $ref: "#/components/schemas/Uuid" }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string, minLength: 1, maxLength: 1000 }
+    PeriodFrom:
+      name: period_from
+      in: query
+      schema: { $ref: "#/components/schemas/IsoDate" }
+    PeriodTo:
+      name: period_to
+      in: query
+      schema: { $ref: "#/components/schemas/IsoDate" }
+    TransactionType:
+      name: type
+      in: query
+      schema: { type: string }
+    AccountFilter:
+      name: account
+      in: query
+      schema: { $ref: "#/components/schemas/Uuid" }
+    CategoryFilter:
+      name: category
+      in: query
+      schema: { $ref: "#/components/schemas/Uuid" }
+    PageLimit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Positive resource row version read by the client.
+      schema: { type: integer, minimum: 1 }
     IdempotencyKey:
       name: Idempotency-Key
       in: header

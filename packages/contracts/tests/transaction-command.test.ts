@@ -150,6 +150,36 @@ describe("B013 typed command contract", () => {
     expect(transactionCommandSchema.safeParse(invalid).success).toBe(false);
   });
 
+  test("accepts every bound account kind for opening equity only", () => {
+    for (const accountKind of [
+      "bank",
+      "cash",
+      "card",
+      "wallet",
+      "investment",
+    ]) {
+      expect(
+        transactionCommandSchema.safeParse({
+          ...common,
+          type: "opening_balance",
+          amount: "10.00",
+          accountId: id("1"),
+          accountKind,
+        }).success,
+      ).toBe(true);
+    }
+    expect(
+      transactionCommandSchema.safeParse({
+        ...common,
+        type: "expense",
+        amount: "10.00",
+        sourceAccountId: id("1"),
+        sourceKind: "investment",
+        categoryId: id("2"),
+      }).success,
+    ).toBe(false);
+  });
+
   test("keeps server-derived postings and invariant state out of correction requests", () => {
     expect(voidRequestSchema.parse({ reason: "Synthetic correction" })).toEqual(
       {
