@@ -1,0 +1,106 @@
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+info:
+  title: Personal Finance OS Foundation API
+  summary: Versioned foundation contract without financial feature endpoints
+  description: >-
+    M0 foundation contract for local and future server deployments. Financial
+    resources are deliberately absent until their owning backlog tasks begin.
+  version: 1.0.0
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: http://127.0.0.1:3000
+    description: Local development only
+security:
+  - cookieAuth: []
+tags:
+  - name: Foundation
+    description: Non-financial platform health and contract metadata
+paths:
+  /api/v1/health:
+    get:
+      operationId: getFoundationHealth
+      summary: Read foundation service health
+      description: Returns operational metadata only; no user or financial data.
+      tags:
+        - Foundation
+      security: []
+      responses:
+        "200":
+          description: Foundation service is healthy
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "429":
+          $ref: "#/components/responses/ProblemResponse"
+        "500":
+          $ref: "#/components/responses/ProblemResponse"
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: pfos_session
+      description: HttpOnly BFF session cookie; provider tokens are never exposed.
+  headers:
+    RequestId:
+      description: UUID request correlation identifier
+      required: true
+      schema:
+        $ref: "#/components/schemas/Uuid"
+  responses:
+    ProblemResponse:
+      description: RFC 7807 compatible problem details response
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "./components/problem-details.yaml#/ProblemDetails"
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+    IsoDate:
+      type: string
+      format: date
+    IsoDateTime:
+      type: string
+      format: date-time
+    DecimalString:
+      type: string
+      pattern: "^-?(?:0|[1-9][0-9]*)\\.[0-9]+$"
+      examples:
+        - "1.31"
+    MoneyString:
+      allOf:
+        - $ref: "#/components/schemas/DecimalString"
+      description: Canonical decimal JSON string; JavaScript number is forbidden.
+      examples:
+        - "10000.00"
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - version
+        - request_id
+        - timestamp
+      properties:
+        status:
+          type: string
+          const: ok
+        version:
+          type: string
+          pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        request_id:
+          $ref: "#/components/schemas/Uuid"
+        timestamp:
+          $ref: "#/components/schemas/IsoDateTime"

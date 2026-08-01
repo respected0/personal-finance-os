@@ -4,6 +4,10 @@ import { createRequire } from "node:module";
 
 const requireFromEslint = createRequire(import.meta.resolve("eslint"));
 const espree = requireFromEslint("espree");
+const requireFromNext = createRequire(
+  import.meta.resolve("eslint-config-next/core-web-vitals"),
+);
+const typescriptParser = requireFromNext("@typescript-eslint/parser");
 const incompatiblePluginPrefixes = [
   "react/",
   "react-hooks/",
@@ -317,6 +321,20 @@ export default [
           ],
         },
       ],
+    },
+  },
+  {
+    files: [
+      "apps/**/*.{ts,tsx}",
+      "packages/**/*.{ts,tsx}",
+      "scripts/fixtures/boundaries/**/*.{ts,tsx}",
+    ],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+      },
     },
   },
 ];

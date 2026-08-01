@@ -1,0 +1,53 @@
+ProblemDetails:
+  type: object
+  description: RFC 7807 compatible, non-enumerating API error envelope.
+  additionalProperties: false
+  required:
+    - type
+    - title
+    - status
+    - code
+    - request_id
+  properties:
+    type:
+      type: string
+      format: uri-reference
+      default: about:blank
+    title:
+      type: string
+      minLength: 1
+      maxLength: 160
+    status:
+      type: integer
+      minimum: 400
+      maximum: 599
+    detail:
+      type: string
+      minLength: 1
+      maxLength: 500
+    instance:
+      type: string
+      format: uri-reference
+    code:
+      type: string
+      pattern: "^[a-z][a-z0-9_]{2,63}$"
+    request_id:
+      type: string
+      format: uuid
+    errors:
+      type: array
+      maxItems: 50
+      items:
+        type: object
+        additionalProperties: false
+        required:
+          - field
+          - code
+        properties:
+          field:
+            type: string
+            minLength: 1
+            maxLength: 120
+          code:
+            type: string
+            pattern: "^[a-z][a-z0-9_]{2,63}$"
