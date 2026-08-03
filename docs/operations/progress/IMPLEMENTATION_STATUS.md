@@ -7,7 +7,7 @@
 - Henüz başlanmayan backlog maddeleri: B049–B104; P0-A3, P0-B1, P0-B2, P0-B3, RC
 - Son doğrulanmış main SHA: `a53bd226c0857587a0fddbd350d9cf564e2c51f5`
 - Güncel çalışma branch'i: `feat/p0-a2-sharing-receivables`
-- Açık PR: Yok. B044–B048 değişiklikleri henüz commit edilmedi.
+- Açık PR: Yok. B044–B048 `ad186e6` commit'i CI doğrulaması için push/PR bekliyor.
 - Son PASS sonuçları: PR #13 için 10/10 CI; PostgreSQL 17.6; Supabase CLI 2.110.0;
   P0-A2 B037–B043 gerçek PostgreSQL, browser, fresh migration, iki reset, checksum,
   drift, Auth/RLS ve secret scan PASS. Bu dilimde geçici Node 24.18.0 + pnpm 11.18.0 ile
@@ -29,9 +29,9 @@
 - Dış kaynak veya kullanıcı kararı bekleyen maddeler: Docker Desktop WSL integration
   erişiminin geri gelmesi gerekiyor. CI mevcut GitHub altyapısında Docker tabanlı
   acceptance, breaking-diff ve secret-scan kontrollerini çalıştırabilir.
-- Bir sonraki kesin adım: B044–B048 kodunu statik olarak gözden geçir, çalışma zamanı
-  erişimi geri geldiğinde `pnpm check`, `pnpm sharing:integration`, fresh migration/reset/
-  drift ve secret scan çalıştır; PASS ise commit/push/PR/CI/merge akışını uygula.
+- Bir sonraki kesin adım: `ad186e6` branch'ini push et ve PR aç; CI'da `sharing:integration`,
+  fresh migration/reset/drift, secret scan ve OpenAPI breaking diff PASS ise B044–B048'i main'e
+  al. Yerel Docker erişimi geri gelirse aynı kontrolleri tekrar çalıştır.
 - Devam etmek için ilk komut: `node --version && pnpm --version && docker info`
 
 ## Bağlayıcı kapılar
