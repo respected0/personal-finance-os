@@ -513,13 +513,11 @@ export async function settleReceivable(
       type: "receivable_settlement",
       amount: input.amount,
       receivableId: input.receivableId,
-      // The authoritative amount is locked and recomputed inside the SERIALIZABLE
-      // transaction. Supplying at least the requested amount lets an idempotent
-      // replay reach the idempotency store even after a full collection closed it.
-      outstandingAmount:
-        receivable.outstanding_amount === "0.0000"
-          ? input.amount
-          : receivable.outstanding_amount,
+      // The read above only establishes ownership/currency. The authoritative
+      // outstanding amount is locked and checked inside the SERIALIZABLE
+      // transaction, so the pure posting preview must not reject a stale read
+      // before that conflict-safe check (or an idempotent replay) can run.
+      outstandingAmount: input.amount,
       targetAccountId: input.targetAccountId,
       targetKind: input.targetKind,
       currency: input.currency,

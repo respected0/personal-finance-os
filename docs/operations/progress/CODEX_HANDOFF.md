@@ -6,8 +6,8 @@
   `a53bd226c0857587a0fddbd350d9cf564e2c51f5`.
 - Kısmen tamamlanan görev: P0-A2 B044–B048. Branch
   `feat/p0-a2-sharing-receivables`; açık PR #14'te quality/security işleri PASS,
-  database/migration-smoke iki deferred-trigger düzeltmesinin yeniden CI
-  doğrulamasını bekliyor.
+  database/migration-smoke iki deferred-trigger ve stale settlement preflight
+  düzeltmesinin yeniden CI doğrulamasını bekliyor.
 - Açık PR/CI: [#14](https://github.com/respected0/personal-finance-os/pull/14) açık;
   PR #13 main’e 10/10 CI ile merge edildi.
 - Commitlenmemiş dosyalar: Beklenmiyor; `git status --short` ile doğrulanmalı. B044–B048
@@ -21,7 +21,9 @@
   settlement invariant trigger'larının sırasıyla `shared_expenses` ve
   `obligations` satırında bulunmayan trigger alanlarını statik olarak çözmeye
   çalıştığını gösterdi. Migration, bu alanları tablo-bağımsız `to_jsonb(NEW)`
-  record projeksiyonu ile okuyacak şekilde düzeltildi. Docker Desktop WSL integration
+  record projeksiyonu ile okuyacak şekilde düzeltildi. Stale settlement preflight
+  artık sonucu belirlemiyor; aşım `SERIALIZABLE`/`FOR UPDATE` altında
+  `ReceivableSettlementStateError` olarak reddediliyor. Docker Desktop WSL integration
   hâlâ yerelde erişilemez; geçici Node 24.18.0 - pnpm 11.18.0 ile statik kontrol
   PASS. İşletim sistemi ayarı değiştirilmemelidir.
 - Kalan kabul kriterleri: B044 exact toplam; UAT-06, UAT-07, UAT-08; FOR UPDATE /

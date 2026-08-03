@@ -10,7 +10,8 @@
 - Açık PR: [#14](https://github.com/respected0/personal-finance-os/pull/14), açık;
   database/migration-smoke dışındaki 9 zorunlu CI işi PASS. Son database CI
   hatası incelendi; shared-expense ve settlement deferred trigger'larındaki
-  çok-tabla `NEW` alan çözümü düzeltildi ve yeniden doğrulama için push bekliyor.
+  çok-tabla `NEW` alan çözümü ile stale settlement preflight reddi düzeltildi;
+  yeniden doğrulama için push bekliyor.
 - Son PASS sonuçları: PR #13 için 10/10 CI; PostgreSQL 17.6; Supabase CLI 2.110.0;
   P0-A2 B037–B043 gerçek PostgreSQL, browser, fresh migration, iki reset, checksum,
   drift, Auth/RLS ve secret scan PASS. Bu dilimde geçici Node 24.18.0 + pnpm 11.18.0 ile
@@ -20,7 +21,9 @@
   shared-expense alanı düzeltmesinden sonra `assert_settlement_invariants()`
   `obligations` trigger'ında olmayan `NEW.obligation_id` alanını çözmeye çalıştı.
   Migration'ın iki çok-tabla deferred trigger'ı artık tablo-bağımsız
-  `to_jsonb(NEW)` record projeksiyonunu kullanıyor. Yerelde
+  `to_jsonb(NEW)` record projeksiyonunu kullanıyor. Settlement preview'si
+  stale outstanding değerini karar verici yapmıyor; gerçek aşım
+  `SERIALIZABLE`/`FOR UPDATE` otoriter kontrolde 409 olarak reddediliyor. Yerelde
   `pnpm install --frozen-lockfile`, format, lint, typecheck, 110 unit test,
   build, migration policy ve OpenAPI lint/bundle PASS. `pnpm contracts:check` OpenAPI lint/bundle sonrasında
   Docker tabanlı `oasdiff` çağrısında; `pnpm security:secret-scan` Docker tabanlı
