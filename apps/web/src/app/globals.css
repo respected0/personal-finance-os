@@ -229,6 +229,11 @@ small {
   padding: clamp(1rem, 3vw, 1.5rem);
 }
 
+.receivables-workspace {
+  margin-top: 1rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+}
+
 .card-summary-grid,
 .card-action-grid,
 .subscription-summary-grid,
@@ -249,6 +254,51 @@ small {
 
 .subscription-action-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.receivables-grid {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.7fr) minmax(0, 1.3fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.three-columns,
+.share-row,
+.receivable-row,
+.settlement-controls {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.three-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.share-list,
+.receivable-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+.share-row {
+  grid-template-columns: minmax(0, 1fr) minmax(6rem, 0.6fr) auto;
+  align-items: end;
+}
+.receivable-row {
+  grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.55fr);
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.52);
+}
+.receivable-row strong,
+.receivable-row small {
+  display: block;
+  margin-top: 0.25rem;
+}
+.settlement-controls {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
 }
 
 .card-summary,
@@ -624,7 +674,8 @@ input::placeholder {
   .entry-layout,
   .setup-grid,
   .card-action-grid,
-  .subscription-action-grid {
+  .subscription-action-grid,
+  .receivables-grid {
     grid-template-columns: 1fr;
   }
 
@@ -726,6 +777,13 @@ input::placeholder {
 
   .history-total span:last-child {
     text-align: left;
+  }
+
+  .three-columns,
+  .share-row,
+  .receivable-row,
+  .settlement-controls {
+    grid-template-columns: 1fr;
   }
 }
 

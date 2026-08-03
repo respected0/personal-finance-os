@@ -4,12 +4,12 @@
 - Tamamlanan ana aşamalar: M0 B001–B010; P0-A0 B011–B024; P0-A1 B025–B036;
   P0-A2 B037–B043. Son main SHA:
   `a53bd226c0857587a0fddbd350d9cf564e2c51f5`.
-- Kısmen tamamlanan görev: P0-A2 B044–B048. Branch
-  `feat/p0-a2-sharing-receivables`; açık PR #14'te quality/security işleri PASS,
-  database/migration-smoke iki deferred-trigger ve stale settlement preflight
-  düzeltmesinin yeniden CI doğrulamasını bekliyor.
-- Açık PR/CI: [#14](https://github.com/respected0/personal-finance-os/pull/14) açık;
-  PR #13 main’e 10/10 CI ile merge edildi.
+- Tamamlanan görev: P0-A2 B044–B048, [PR #14](https://github.com/respected0/personal-finance-os/pull/14)
+  10/10 CI ile `ee1ff91` olarak main'e squash merge edildi.
+- Kısmen tamamlanan görev: P0-A2 B049–B050. Branch
+  `feat/p0-a2-sensitive-flow-ui`; alacak/ortak gider ekranı eklendi, browser UAT
+  genişletmesi ve runtime doğrulama sıradaki iştir.
+- Açık PR/CI: Açık PR yok; B049–B050 için güvenli checkpoint commit/push sonrasında PR açılacak.
 - Commitlenmemiş dosyalar: Beklenmiyor; `git status --short` ile doğrulanmalı. B044–B048
   migration, contract, DB repository, API routes, test ve CI değişiklikleri `ad186e6`
   ve takip eden `81ae743`/`43b2c80` düzeltmelerinde.

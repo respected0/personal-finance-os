@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { CardWorkspace } from "./card-workspace";
 import { SubscriptionWorkspace } from "./subscription-workspace";
+import { ReceivablesWorkspace } from "./receivables-workspace";
 
 interface AccountBalance {
   accountId: string;
@@ -716,6 +717,8 @@ export function DailyCoreApp() {
         categories={categories}
         onCommitted={loadData}
       />
+
+      <ReceivablesWorkspace accounts={accounts} onCommitted={loadData} />
 
       {setupOpen && (
         <section className="panel setup-panel" aria-labelledby="setup-title">
