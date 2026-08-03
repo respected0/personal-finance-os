@@ -276,7 +276,7 @@ export async function previewSharedExpense(
         from app_private.financial_accounts
        where user_id = ${input.userId}::uuid
          and id = ${input.command.paymentAccountId}::uuid
-         and active
+         and status = 'active'
          and currency = ${input.command.currency}
          and account_type = ${expectedAccountKind}
     `;
