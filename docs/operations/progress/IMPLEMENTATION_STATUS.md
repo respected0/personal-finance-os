@@ -7,7 +7,9 @@
 - Henüz başlanmayan backlog maddeleri: B051–B104; P0-A3, P0-B1, P0-B2, P0-B3, RC
 - Son doğrulanmış main SHA: `ee1ff91e8c44b8d7b26c2344d3b8652038625edf`
 - Güncel çalışma branch'i: `feat/p0-a2-sensitive-flow-ui`
-- Açık PR: Henüz yok; B049–B050 branch'i main `ee1ff91` üzerinden oluşturuldu.
+- Açık PR: [#15](https://github.com/respected0/personal-finance-os/pull/15), açık;
+  son commit `6a794ad`. B049 UI ve B050 UAT-06/07 browser genişletmesi için CI
+  yeni head üzerinde yeniden planlanıyor.
 - Son PASS sonuçları: PR #13 için 10/10 CI; PostgreSQL 17.6; Supabase CLI 2.110.0;
   P0-A2 B037–B043 gerçek PostgreSQL, browser, fresh migration, iki reset, checksum,
   drift, Auth/RLS ve secret scan PASS. Bu dilimde geçici Node 24.18.0 + pnpm 11.18.0 ile
