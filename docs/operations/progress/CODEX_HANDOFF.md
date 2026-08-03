@@ -7,8 +7,8 @@
 - Tamamlanan görev: P0-A2 B044–B048, [PR #14](https://github.com/respected0/personal-finance-os/pull/14)
   10/10 CI ile `ee1ff91` olarak main'e squash merge edildi.
 - Kısmen tamamlanan görev: P0-A2 B049–B050. Branch
-  `feat/p0-a2-sensitive-flow-ui`; alacak/ortak gider ekranı eklendi, browser UAT
-  genişletmesi ve runtime doğrulama sıradaki iştir.
+  `feat/p0-a2-sensitive-flow-ui`; alacak/ortak gider ekranı ve B050 için
+  browser UAT-06/07 genişletmesi eklendi, runtime doğrulama sıradaki iştir.
 - Açık PR/CI: Açık PR yok; B049–B050 için güvenli checkpoint commit/push sonrasında PR açılacak.
 - Commitlenmemiş dosyalar: Beklenmiyor; `git status --short` ile doğrulanmalı. B044–B048
   migration, contract, DB repository, API routes, test ve CI değişiklikleri `ad186e6`

@@ -37,8 +37,8 @@
 - Dış kaynak veya kullanıcı kararı bekleyen maddeler: Docker Desktop WSL integration
   erişiminin geri gelmesi gerekiyor. CI mevcut GitHub altyapısında Docker tabanlı
   acceptance, breaking-diff ve secret-scan kontrollerini çalıştırabilir.
-- Bir sonraki kesin adım: B049 alacak ekranını B050 browser UAT-06/07/08 ile tamamla;
-  ardından tam statik kontrol, GitHub CI ve P0-A2 gate kanıtını çalıştır.
+- Bir sonraki kesin adım: B050 browser UAT-06/07 genişletmesi eklendi; statik
+  kontrol ve GitHub CI sonrasında UAT-08 görünürlüğünü, P0-A2 gate kanıtını tamamla.
 - Devam etmek için ilk komut: `node --version && pnpm --version && docker info`
 
 ## Bağlayıcı kapılar
