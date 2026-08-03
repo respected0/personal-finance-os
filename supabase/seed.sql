@@ -36,7 +36,12 @@ begin
           'installment_plans',
           'installment_items',
           'subscriptions',
-          'subscription_cycles'
+          'subscription_cycles',
+          'counterparties',
+          'obligations',
+          'shared_expenses',
+          'shared_expense_shares',
+          'settlements'
         )
       )
   ) then
@@ -68,12 +73,17 @@ begin
     or exists (select 1 from app_private.installment_items)
     or exists (select 1 from app_private.subscriptions)
     or exists (select 1 from app_private.subscription_cycles)
+    or exists (select 1 from app_private.counterparties)
+    or exists (select 1 from app_private.obligations)
+    or exists (select 1 from app_private.shared_expenses)
+    or exists (select 1 from app_private.shared_expense_shares)
+    or exists (select 1 from app_private.settlements)
   then
     raise exception 'Seed must not populate P0-A financial or operational rows.';
   end if;
 
   raise notice
-    'P0-A2 seed complete: zero identity, account, card, subscription, transaction, posting, audit, outbox, or finance rows.';
+    'P0-A2 seed complete: zero identity, counterparty, account, card, subscription, shared-expense, receivable, settlement, transaction, posting, audit, outbox, or finance rows.';
 end
 $seed$;
 
