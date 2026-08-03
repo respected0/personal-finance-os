@@ -300,10 +300,15 @@ declare
   posting_receivable numeric(19,4);
   posting_expense numeric(19,4);
 begin
-  target_expense_id := case
-    when tg_table_name = 'shared_expenses' then new.id
-    else new.shared_expense_id
-  end;
+  -- This deferred trigger serves both parent and share rows.  `NEW` is a
+  -- trigger-record, so resolve its differing field through JSON rather than
+  -- binding a `shared_expense_id` field while the parent-table trigger runs.
+  target_expense_id := (
+    to_jsonb(new) ->> case
+      when tg_table_name = 'shared_expenses' then 'id'
+      else 'shared_expense_id'
+    end
+  )::uuid;
   select user_id, total_paid, owner_share, rounding_amount, currency, sharing_status
     into target_user_id, target_total, target_owner, target_rounding, target_currency, target_status
     from app_private.shared_expenses

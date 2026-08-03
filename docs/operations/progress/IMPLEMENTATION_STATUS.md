@@ -1,6 +1,6 @@
 # Uygulama Durumu
 
-- Güncellendi: 2026-08-03 TRT
+- Güncellendi: 2026-08-04 TRT
 - Son tamamlanan ana aşama: P0-A2 abonelik/cashback (B042–B043, PR #13 merged)
 - Tamamlanan backlog maddeleri: B001–B043 (`a53bd226c0857587a0fddbd350d9cf564e2c51f5` üzerinde)
 - Devam eden backlog maddesi: P0-A2 B044–B048 ortak gider, alacak ve tahsilat
@@ -8,13 +8,20 @@
 - Son doğrulanmış main SHA: `a53bd226c0857587a0fddbd350d9cf564e2c51f5`
 - Güncel çalışma branch'i: `feat/p0-a2-sharing-receivables`
 - Açık PR: [#14](https://github.com/respected0/personal-finance-os/pull/14), açık;
-  `43b2c80` üzerinden CI çalışıyor.
+  database/migration-smoke dışındaki 9 zorunlu CI işi PASS. Son database CI
+  hatası incelendi; deferred shared-expense trigger'ındaki çok-tabla `NEW`
+  alan çözümü düzeltildi ve yeniden doğrulama için push bekliyor.
 - Son PASS sonuçları: PR #13 için 10/10 CI; PostgreSQL 17.6; Supabase CLI 2.110.0;
   P0-A2 B037–B043 gerçek PostgreSQL, browser, fresh migration, iki reset, checksum,
   drift, Auth/RLS ve secret scan PASS. Bu dilimde geçici Node 24.18.0 + pnpm 11.18.0 ile
   `format:check`, `lint`, `typecheck`, 110 unit test, `build`, migration policy ve
   OpenAPI lint/bundle PASS.
-- Son FAIL komutu ve kök nedeni: `pnpm contracts:check` OpenAPI lint/bundle sonrasında
+- Son FAIL komutu ve kök nedeni: PR #14 `database / migration-smoke` çalışmasında
+  `assert_shared_expense_invariants()` `shared_expenses` trigger'ında olmayan
+  `NEW.shared_expense_id` alanını çözmeye çalıştı. Migration, trigger kaydını
+  tablo-bağımsız `to_jsonb(NEW)` üzerinden okuyacak şekilde düzeltildi. Yerelde
+  `pnpm install --frozen-lockfile`, format, lint, typecheck, 110 unit test,
+  build, migration policy ve OpenAPI lint/bundle PASS. `pnpm contracts:check` OpenAPI lint/bundle sonrasında
   Docker tabanlı `oasdiff` çağrısında; `pnpm security:secret-scan` Docker tabanlı
   gitleaks çağrısında başarısız oldu. `docker`, `docker compose` ve `docker info` Docker
   Desktop WSL integration etkin değil hatası veriyor. Bu makine/WSL engelidir; işletim
@@ -30,7 +37,7 @@
 - Dış kaynak veya kullanıcı kararı bekleyen maddeler: Docker Desktop WSL integration
   erişiminin geri gelmesi gerekiyor. CI mevcut GitHub altyapısında Docker tabanlı
   acceptance, breaking-diff ve secret-scan kontrollerini çalıştırabilir.
-- Bir sonraki kesin adım: `ad186e6` branch'ini push et ve PR aç; CI'da `sharing:integration`,
+- Bir sonraki kesin adım: shared-expense deferred-trigger düzeltmesini push et; CI'da `sharing:integration`,
   fresh migration/reset/drift, secret scan ve OpenAPI breaking diff PASS ise B044–B048'i main'e
   al. Yerel Docker erişimi geri gelirse aynı kontrolleri tekrar çalıştır.
 - Devam etmek için ilk komut: `node --version && pnpm --version && docker info`
