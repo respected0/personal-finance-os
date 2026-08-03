@@ -2,6 +2,7 @@ import {
   subscriptionChargeRequestSchema,
   uuidSchema,
 } from "@personal-finance-os/contracts";
+import { hashCanonicalValue } from "@personal-finance-os/domain";
 import {
   commitLedgerTransaction,
   getSubscriptionCycleContext,
@@ -38,6 +39,7 @@ export async function POST(
       userId: runtime.userId,
       idempotencyKey,
       requestId: runtime.requestId,
+      requestHash: hashCanonicalValue({ cycleId, ...body }),
       subscriptionCycleId: cycleId,
       command: {
         type: "expense",

@@ -15,6 +15,7 @@ const ledgerKernelMigrationName = "20260801173000_p0_a0_ledger_kernel.sql";
 const dailyCoreMigrationName = "20260801212000_p0_a1_daily_core.sql";
 const cardFlowsMigrationName = "20260801231500_p0_a2_card_flows.sql";
 const subscriptionMigrationName = "20260801234500_p0_a2_subscriptions.sql";
+const sharingMigrationName = "20260803000000_p0_a2_sharing_receivables.sql";
 
 async function read(relativePath) {
   return readFile(path.join(rootDirectory, relativePath), "utf8");
@@ -47,6 +48,9 @@ if (!migrationFiles.includes(subscriptionMigrationName)) {
   errors.push(
     `Eksik P0-A2 subscription migration: ${subscriptionMigrationName}.`,
   );
+}
+if (!migrationFiles.includes(sharingMigrationName)) {
+  errors.push(`Eksik P0-A2 sharing migration: ${sharingMigrationName}.`);
 }
 
 const versions = new Set();
@@ -275,6 +279,50 @@ for (const [pattern, message] of [
   ],
 ]) {
   if (!pattern.test(subscriptionMigration)) errors.push(message);
+}
+
+const sharingMigration = await read(
+  `supabase/migrations/${sharingMigrationName}`,
+);
+for (const [pattern, message] of [
+  [
+    /create\s+table\s+app_private\.counterparties/i,
+    "B044/B045 person counterparty tablosu eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.shared_expenses/i,
+    "B044 shared_expenses tablosu eksik.",
+  ],
+  [
+    /target_owner\s*\+\s*target_rounding\s*\+\s*share_total\s*<>\s*target_total/i,
+    "B044 owner/pay/rounding/pay toplam deferred invariant eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.obligations/i,
+    "B046 obligations tablosu eksik.",
+  ],
+  [
+    /estimated_collectible_amount\s*<=\s*nominal_amount\s*-\s*collected_amount/i,
+    "B046 tahsil edilebilir değer üst sınırı eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.settlements/i,
+    "B047 settlements tablosu eksik.",
+  ],
+  [
+    /create\s+constraint\s+trigger\s+settlements_deferred_invariants/i,
+    "B047/B048 deferred settlement invariant eksik.",
+  ],
+  [
+    /alter\s+table\s+app_private\.obligations\s+force\s+row\s+level\s+security/i,
+    "B046 obligations forced RLS açık değil.",
+  ],
+  [
+    /set\s+search_path\s*=\s*pg_catalog\s*,\s*app_private/i,
+    "B044-B048 trigger fonksiyonları sabit search_path kullanmıyor.",
+  ],
+]) {
+  if (!pattern.test(sharingMigration)) errors.push(message);
 }
 
 const ledgerKernelMigration = await read(

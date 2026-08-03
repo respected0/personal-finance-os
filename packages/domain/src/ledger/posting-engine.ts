@@ -370,12 +370,29 @@ function buildNonRevisionPlan(
         command.currency,
       );
       const ownerShare = Money.from(command.ownerShare, command.currency);
-      let allocated = ownerShare;
-      if (ownerShare.isPositive()) {
+      if (ownerShare.compare(Money.zero(command.currency)) < 0) {
+        throw new LedgerInvariantError(
+          "negative_owner_share",
+          "Owner share cannot be negative.",
+        );
+      }
+      const rounding = Money.from(
+        command.roundingAmount ?? "0.00",
+        command.currency,
+      );
+      const ownerCost = ownerShare.add(rounding);
+      if (ownerCost.compare(Money.zero(command.currency)) < 0) {
+        throw new LedgerInvariantError(
+          "negative_owner_cost",
+          "Owner share plus rounding cannot be negative.",
+        );
+      }
+      let allocated = ownerCost;
+      if (ownerCost.isPositive()) {
         pushPosting(plan, {
           ledgerRole: "expense",
           side: "debit",
-          amount: ownerShare,
+          amount: ownerCost,
           fxRate,
         });
       }
@@ -395,7 +412,7 @@ function buildNonRevisionPlan(
       if (!allocated.equals(primaryAmount)) {
         throw new LedgerInvariantError(
           "shared_expense_sum_mismatch",
-          "Owner share plus participant shares must equal total paid.",
+          "Owner share, explicit rounding and participant shares must equal total paid.",
         );
       }
       pushPosting(plan, {

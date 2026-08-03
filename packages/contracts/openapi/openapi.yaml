@@ -6,7 +6,7 @@ info:
   description: >-
     Local and future server contract. P0-A0 exposes typed preview and commit
     boundaries; clients never submit ledger postings or owner identifiers.
-  version: 1.4.0
+  version: 1.5.0
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
@@ -28,6 +28,8 @@ tags:
     description: Owned credit-card profiles, statements and exact payment previews
   - name: Subscriptions
     description: Owned renewal cycles with linked gross charges and expense offsets
+  - name: Sharing
+    description: Owned counterparties, exact shared-expense splits and receivable collection
 paths:
   /api/v1/health:
     get:
@@ -629,6 +631,156 @@ paths:
               },
           }
         "403": { $ref: "#/components/responses/ProblemResponse" }
+        "409": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/counterparties:
+    get:
+      operationId: listCounterparties
+      summary: List owned counterparties
+      tags: [Sharing]
+      x-required-aal: aal1
+      parameters:
+        - name: type
+          in: query
+          schema: { enum: [person, merchant, employer, provider] }
+      responses:
+        "200":
+          description: Owned counterparties
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "./components/sharing.yaml#/Counterparty" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+    post:
+      operationId: createCounterparty
+      summary: Create an owned encrypted counterparty reference
+      tags: [Sharing]
+      x-required-aal: aal2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./components/sharing.yaml#/CounterpartyCreate" }
+      responses:
+        "201":
+          description: Counterparty created
+          content:
+            application/json:
+              schema: { $ref: "./components/sharing.yaml#/Counterparty" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/shared-expenses/preview:
+    post:
+      operationId: previewSharedExpense
+      summary: Validate and preview an exact shared-expense split
+      tags: [Sharing]
+      x-required-aal: aal2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./components/sharing.yaml#/SharedExpenseRequest" }
+      responses:
+        "200":
+          description: Deterministic split preview
+          content:
+            application/json:
+              schema: { $ref: "./components/ledger.yaml#/TransactionPreview" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/shared-expenses:
+    post:
+      operationId: createSharedExpense
+      summary: Commit one payment and the linked receivable shares atomically
+      tags: [Sharing]
+      x-required-aal: aal2
+      parameters:
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./components/sharing.yaml#/SharedExpenseRequest" }
+      responses:
+        "200":
+          description: Idempotent replay
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: "./components/sharing.yaml#/SharedExpenseCommitResponse",
+                }
+        "201":
+          description: Payment and shares committed atomically
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: "./components/sharing.yaml#/SharedExpenseCommitResponse",
+                }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
+        "409": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/receivables:
+    get:
+      operationId: listReceivables
+      summary: List owned receivables with nominal and recognized value kept distinct
+      tags: [Sharing]
+      x-required-aal: aal1
+      parameters:
+        - name: status
+          in: query
+          schema: { enum: [collectible, doubtful, waived, closed] }
+        - name: person
+          in: query
+          schema: { $ref: "#/components/schemas/Uuid" }
+      responses:
+        "200":
+          description: Owned receivables
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "./components/sharing.yaml#/Receivable" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/receivables/{receivableId}/settlements:
+    post:
+      operationId: settleReceivable
+      summary: Collect a receivable without creating normal income
+      tags: [Sharing]
+      x-required-aal: aal2
+      parameters:
+        - name: receivableId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "./components/sharing.yaml#/ReceivableSettlementRequest" }
+      responses:
+        "200":
+          description: Idempotent replay
+          content:
+            application/json:
+              schema:
+                { $ref: "./components/ledger.yaml#/TransactionCommitResponse" }
+        "201":
+          description: Settlement committed
+          content:
+            application/json:
+              schema:
+                { $ref: "./components/ledger.yaml#/TransactionCommitResponse" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
         "409": { $ref: "#/components/responses/ProblemResponse" }
         "422": { $ref: "#/components/responses/ProblemResponse" }
 components:
