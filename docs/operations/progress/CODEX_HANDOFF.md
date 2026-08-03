@@ -5,10 +5,11 @@
   P0-A2 B037–B043. Son main SHA:
   `a53bd226c0857587a0fddbd350d9cf564e2c51f5`.
 - Kısmen tamamlanan görev: P0-A2 B044–B048. Branch
-  `feat/p0-a2-sharing-receivables`; son commit `ad186e6` push/PR/CI bekliyor.
+  `feat/p0-a2-sharing-receivables`; son commit `43b2c80`, açık PR #14 CI bekliyor.
 - Açık PR/CI: Açık PR yok. PR #13 main’e 10/10 CI ile merge edildi.
 - Commitlenmemiş dosyalar: Beklenmiyor; `git status --short` ile doğrulanmalı. B044–B048
-  migration, contract, DB repository, API routes, test ve CI değişiklikleri `ad186e6` içinde.
+  migration, contract, DB repository, API routes, test ve CI değişiklikleri `ad186e6`
+  ve takip eden `81ae743`/`43b2c80` düzeltmelerinde.
 - Son çalıştırılan komutlar: `git diff --check`, `format:check`, `lint`, `typecheck`,
   110 unit test, `build`, migration policy ve OpenAPI lint/bundle PASS. `contracts:diff`
   ve `security:secret-scan`, Docker tabanlı araçları çalıştırırken WSL integration
