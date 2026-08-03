@@ -757,3 +757,205 @@ export const outboxEvents = appPrivate.table(
     ),
   ],
 );
+
+/** B044-B048 mirror only; reviewed Supabase SQL migrations remain authoritative. */
+export const counterparties = appPrivate.table(
+  "counterparties",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    type: text().notNull(),
+    nameEnc: bytea("name_enc").notNull(),
+    nameSearchHash: bytea("name_search_hash").notNull(),
+    nameKeyId: text("name_key_id").notNull(),
+    nameAlgorithm: text("name_algorithm").notNull(),
+    nameEncVersion: smallint("name_enc_version").notNull(),
+    nameNonce: bytea("name_nonce").notNull(),
+    nameAuthTag: bytea("name_auth_tag").notNull(),
+    nameAadVersion: smallint("name_aad_version").notNull(),
+    contactNoteEnc: bytea("contact_note_enc"),
+    active: boolean().notNull().default(true),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("counterparties_user_id_unique").on(table.userId, table.id),
+    index("counterparties_user_type_active_idx").on(
+      table.userId,
+      table.type,
+      table.active,
+      table.id,
+    ),
+  ],
+);
+
+export const obligations = appPrivate.table(
+  "obligations",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    personId: uuid("person_id").notNull(),
+    direction: text().notNull(),
+    originType: text("origin_type").notNull(),
+    currency: char({ length: 3 }).notNull(),
+    nominalAmount: numeric("nominal_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    collectedAmount: numeric("collected_amount", { precision: 19, scale: 4 })
+      .notNull()
+      .default("0"),
+    collectabilityStatus: text("collectability_status").notNull(),
+    estimatedCollectibleAmount: numeric("estimated_collectible_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    includeInNetWorth: boolean("include_in_net_worth").notNull(),
+    includeInPlanning: boolean("include_in_planning").notNull(),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("obligations_user_id_unique").on(table.userId, table.id),
+    index("obligations_user_receivable_idx").on(
+      table.userId,
+      table.direction,
+      table.collectabilityStatus,
+      table.personId,
+      table.id,
+    ),
+    foreignKey({
+      columns: [table.userId, table.personId],
+      foreignColumns: [counterparties.userId, counterparties.id],
+      name: "obligations_person_fk",
+    }),
+  ],
+);
+
+export const sharedExpenses = appPrivate.table(
+  "shared_expenses",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    paymentTransactionId: uuid("payment_transaction_id").notNull(),
+    totalPaid: numeric("total_paid", { precision: 19, scale: 4 }).notNull(),
+    ownerShare: numeric("owner_share", { precision: 19, scale: 4 }).notNull(),
+    roundingAmount: numeric("rounding_amount", { precision: 19, scale: 4 })
+      .notNull()
+      .default("0"),
+    currency: char({ length: 3 }).notNull(),
+    sharingStatus: text("sharing_status").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("shared_expenses_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("shared_expenses_user_payment_unique").on(
+      table.userId,
+      table.paymentTransactionId,
+    ),
+    index("shared_expenses_user_status_idx").on(
+      table.userId,
+      table.sharingStatus,
+      table.id,
+    ),
+  ],
+);
+
+export const sharedExpenseShares = appPrivate.table(
+  "shared_expense_shares",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    sharedExpenseId: uuid("shared_expense_id").notNull(),
+    personId: uuid("person_id").notNull(),
+    shareAmount: numeric("share_amount", { precision: 19, scale: 4 }).notNull(),
+    receivableId: uuid("receivable_id").notNull(),
+    settledAmount: numeric("settled_amount", { precision: 19, scale: 4 })
+      .notNull()
+      .default("0"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("shared_expense_shares_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    uniqueIndex("shared_expense_shares_user_person_unique").on(
+      table.userId,
+      table.sharedExpenseId,
+      table.personId,
+    ),
+    uniqueIndex("shared_expense_shares_user_receivable_unique").on(
+      table.userId,
+      table.receivableId,
+    ),
+    foreignKey({
+      columns: [table.userId, table.sharedExpenseId],
+      foreignColumns: [sharedExpenses.userId, sharedExpenses.id],
+      name: "shared_expense_shares_expense_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.personId],
+      foreignColumns: [counterparties.userId, counterparties.id],
+      name: "shared_expense_shares_person_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.receivableId],
+      foreignColumns: [obligations.userId, obligations.id],
+      name: "shared_expense_shares_receivable_fk",
+    }),
+  ],
+);
+
+export const settlements = appPrivate.table(
+  "settlements",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    obligationId: uuid("obligation_id").notNull(),
+    transactionId: uuid("transaction_id").notNull(),
+    amount: numeric({ precision: 19, scale: 4 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("settlements_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("settlements_user_transaction_unique").on(
+      table.userId,
+      table.transactionId,
+    ),
+    index("settlements_user_obligation_idx").on(
+      table.userId,
+      table.obligationId,
+      table.createdAt,
+      table.id,
+    ),
+    foreignKey({
+      columns: [table.userId, table.obligationId],
+      foreignColumns: [obligations.userId, obligations.id],
+      name: "settlements_obligation_fk",
+    }),
+  ],
+);

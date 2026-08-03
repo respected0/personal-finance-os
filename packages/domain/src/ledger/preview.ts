@@ -21,14 +21,18 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
+export function hashCanonicalValue(value: unknown): string {
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(value)))
+    .digest("hex");
+}
+
 export function canonicalCommandJson(command: TransactionCommand): string {
   return JSON.stringify(canonicalize(command));
 }
 
 export function hashTransactionCommand(command: TransactionCommand): string {
-  return createHash("sha256")
-    .update(canonicalCommandJson(command))
-    .digest("hex");
+  return hashCanonicalValue(command);
 }
 
 export function previewTransaction(

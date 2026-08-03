@@ -1,0 +1,148 @@
+CounterpartyCreate:
+  type: object
+  additionalProperties: false
+  required: [type, name]
+  properties:
+    type: { enum: [person, merchant, employer, provider] }
+    name: { type: string, minLength: 1, maxLength: 120 }
+
+Counterparty:
+  allOf:
+    - { $ref: "#/CounterpartyCreate" }
+    - type: object
+      additionalProperties: false
+      required: [id, active, rowVersion]
+      properties:
+        id: { $ref: "./ledger.yaml#/Uuid" }
+        active: { type: boolean }
+        rowVersion: { type: integer, minimum: 1 }
+
+SharedExpenseShare:
+  type: object
+  additionalProperties: false
+  required: [personId, amount]
+  properties:
+    personId: { $ref: "./ledger.yaml#/Uuid" }
+    amount: { $ref: "./ledger.yaml#/PositiveMoneyString" }
+
+SharedExpenseRequest:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      totalAmount,
+      ownerShare,
+      shares,
+      paymentAccountId,
+      paymentSourceKind,
+      currency,
+      occurredAt,
+      economicDate,
+    ]
+  properties:
+    totalAmount: { $ref: "./ledger.yaml#/PositiveMoneyString" }
+    ownerShare: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    roundingAmount:
+      type: string
+      pattern: "^-?(?:0|[1-9][0-9]{0,14})\\.[0-9]{1,4}$"
+      default: "0.00"
+      description: Explicit exact rounding allocation; never inferred.
+    shares:
+      type: array
+      minItems: 1
+      maxItems: 50
+      items: { $ref: "#/SharedExpenseShare" }
+    paymentAccountId: { $ref: "./ledger.yaml#/Uuid" }
+    paymentSourceKind: { enum: [bank, cash, card] }
+    currency: { $ref: "./ledger.yaml#/CurrencyCode" }
+    occurredAt: { type: string, format: date-time }
+    economicDate: { type: string, format: date }
+
+SharedExpense:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      paymentTransactionId,
+      totalPaid,
+      ownerShare,
+      roundingAmount,
+      ownerCost,
+      currency,
+      sharingStatus,
+      shares,
+    ]
+  properties:
+    id: { $ref: "./ledger.yaml#/Uuid" }
+    paymentTransactionId: { $ref: "./ledger.yaml#/Uuid" }
+    totalPaid: { $ref: "./ledger.yaml#/PositiveMoneyString" }
+    ownerShare: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    roundingAmount:
+      type: string
+      pattern: "^-?(?:0|[1-9][0-9]{0,14})\\.[0-9]{1,4}$"
+    ownerCost: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    currency: { $ref: "./ledger.yaml#/CurrencyCode" }
+    sharingStatus: { enum: [pending, split, closed] }
+    shares:
+      type: array
+      items:
+        type: object
+        additionalProperties: false
+        required: [personId, receivableId, shareAmount, settledAmount]
+        properties:
+          personId: { $ref: "./ledger.yaml#/Uuid" }
+          receivableId: { $ref: "./ledger.yaml#/Uuid" }
+          shareAmount: { $ref: "./ledger.yaml#/PositiveMoneyString" }
+          settledAmount: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+
+SharedExpenseCommitResponse:
+  type: object
+  additionalProperties: false
+  required: [transaction, sharedExpense]
+  properties:
+    transaction: { $ref: "./ledger.yaml#/TransactionCommitResponse" }
+    sharedExpense: { $ref: "#/SharedExpense" }
+
+Receivable:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      personId,
+      personName,
+      nominalAmount,
+      collectedAmount,
+      outstandingAmount,
+      recognizedAmount,
+      collectabilityStatus,
+      includeInNetWorth,
+      includeInPlanning,
+      currency,
+    ]
+  properties:
+    id: { $ref: "./ledger.yaml#/Uuid" }
+    personId: { $ref: "./ledger.yaml#/Uuid" }
+    personName: { type: string, minLength: 1, maxLength: 120 }
+    nominalAmount: { $ref: "./ledger.yaml#/PositiveMoneyString" }
+    collectedAmount: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    outstandingAmount: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    recognizedAmount: { $ref: "./ledger.yaml#/NonNegativeMoneyString" }
+    collectabilityStatus: { enum: [collectible, doubtful, waived, closed] }
+    includeInNetWorth: { type: boolean }
+    includeInPlanning: { type: boolean }
+    currency: { $ref: "./ledger.yaml#/CurrencyCode" }
+
+ReceivableSettlementRequest:
+  type: object
+  additionalProperties: false
+  required:
+    [amount, currency, occurredAt, economicDate, targetAccountId, targetKind]
+  properties:
+    amount: { $ref: "./ledger.yaml#/PositiveMoneyString" }
+    currency: { $ref: "./ledger.yaml#/CurrencyCode" }
+    occurredAt: { type: string, format: date-time }
+    economicDate: { type: string, format: date }
+    targetAccountId: { $ref: "./ledger.yaml#/Uuid" }
+    targetKind: { enum: [bank, cash] }

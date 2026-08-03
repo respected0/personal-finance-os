@@ -6,7 +6,7 @@ import {
 } from "../../packages/contracts/src/index.ts";
 
 describe("B005/P0-A2 contract boundary", () => {
-  test("exposes only approved foundation, ledger, daily-core and card paths", async () => {
+  test("exposes only approved foundation, ledger, daily-core and P0-A2 paths", async () => {
     const specification = await readFile(
       "packages/contracts/openapi/openapi.yaml",
       "utf8",
@@ -25,6 +25,10 @@ describe("B005/P0-A2 contract boundary", () => {
     );
     const subscriptionComponents = await readFile(
       "packages/contracts/openapi/components/subscriptions.yaml",
+      "utf8",
+    );
+    const sharingComponents = await readFile(
+      "packages/contracts/openapi/components/sharing.yaml",
       "utf8",
     );
 
@@ -54,6 +58,11 @@ describe("B005/P0-A2 contract boundary", () => {
       "/api/v1/subscriptions",
       "/api/v1/subscription-cycles/{cycleId}/charge",
       "/api/v1/subscription-cycles/{cycleId}/cashback",
+      "/api/v1/counterparties",
+      "/api/v1/shared-expenses/preview",
+      "/api/v1/shared-expenses",
+      "/api/v1/receivables",
+      "/api/v1/receivables/{receivableId}/settlements",
     ]);
     expect(specification).not.toMatch(
       /\/api\/v1\/(budgets|investments|ledger|reconciliations|reports)/u,
@@ -66,6 +75,9 @@ describe("B005/P0-A2 contract boundary", () => {
     );
     expect(cardComponents).not.toMatch(/\b(userId|user_id)\b/u);
     expect(subscriptionComponents).not.toMatch(/\b(userId|user_id)\b/u);
+    expect(sharingComponents).not.toMatch(
+      /\b(userId|user_id|name_enc|name_key_id|name_nonce|name_auth_tag)\b/u,
+    );
   });
 
   test("accepts canonical decimal strings and rejects JSON numbers", () => {

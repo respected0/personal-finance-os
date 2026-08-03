@@ -265,6 +265,45 @@ describe("B013-B015 transaction commands and posting templates", () => {
   });
 });
 
+describe("B044 exact shared-expense rounding", () => {
+  test("allocates explicit rounding to owner cost without floating-point arithmetic", () => {
+    const plan = buildPostingPlan({
+      ...common,
+      type: "shared_expense",
+      totalAmount: "100.00",
+      ownerShare: "33.33",
+      roundingAmount: "0.01",
+      shares: [
+        { personId: id("701"), amount: "33.33" },
+        { personId: id("702"), amount: "33.33" },
+      ],
+      paymentAccountId: id("1"),
+      paymentSourceKind: "bank",
+    });
+    expect(plan.effects.personalExpenseDelta).toBe("33.34");
+    expect(
+      plan.postings
+        .filter(
+          ({ ledgerRole, side }) =>
+            ledgerRole === "receivable_asset" && side === "debit",
+        )
+        .map(({ amountOriginal }) => amountOriginal),
+    ).toEqual(["33.33", "33.33"]);
+    expect(() =>
+      buildPostingPlan({
+        ...common,
+        type: "shared_expense",
+        totalAmount: "1.00",
+        ownerShare: "0.00",
+        roundingAmount: "-0.01",
+        shares: [{ personId: id("703"), amount: "1.01" }],
+        paymentAccountId: id("1"),
+        paymentSourceKind: "bank",
+      }),
+    ).toThrow(LedgerInvariantError);
+  });
+});
+
 describe("B024 UAT financial rule coverage", () => {
   test("UAT-08 doubtful receivable policies remain independent", () => {
     expect(

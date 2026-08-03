@@ -18,6 +18,7 @@
     "test:daily-core": "node tests/daily-core/local-daily-core.mjs",
     "test:cards": "node tests/cards/local-cards.mjs",
     "test:subscriptions": "node tests/subscriptions/local-subscriptions.mjs",
+    "test:sharing": "node tests/sharing/local-sharing.mjs",
     "test:ledger": "node tests/ledger/local-ledger.mjs",
     "test:rls": "node tests/rls/local-rls.mjs",
     "typecheck": "pnpm --filter @personal-finance-os/domain build && tsc -p tsconfig.json --noEmit"

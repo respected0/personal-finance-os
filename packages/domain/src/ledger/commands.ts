@@ -83,6 +83,7 @@ export interface SharedExpenseCommand extends BaseCommand {
   readonly type: "shared_expense";
   readonly totalAmount: string;
   readonly ownerShare: string;
+  readonly roundingAmount?: string;
   readonly shares: readonly SharedExpenseShare[];
   readonly paymentAccountId: string;
   readonly paymentSourceKind: PaymentAccountKind;

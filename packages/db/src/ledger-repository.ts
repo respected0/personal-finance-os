@@ -24,7 +24,13 @@ export interface CommitTransactionInput {
   readonly actorSessionId?: string;
   readonly command: TransactionCommand;
   readonly previewHash?: string;
+  /** Stable hash of the public endpoint payload when server-only context is injected. */
+  readonly requestHash?: string;
   readonly subscriptionCycleId?: string;
+  /** Creates the B044 shared-expense aggregate atomically with its ledger payment. */
+  readonly sharedExpenseId?: string;
+  /** Creates the B047 settlement aggregate atomically with its ledger payment. */
+  readonly settlementObligationId?: string;
 }
 
 export interface CommitTransactionResponse {
@@ -97,6 +103,26 @@ export class SubscriptionCycleStateError extends Error {
       "The subscription cycle charge or cashback state is no longer valid.",
     );
     this.name = "SubscriptionCycleStateError";
+  }
+}
+
+export class SharedExpenseStateError extends Error {
+  readonly code = "shared_expense_conflict";
+  readonly status = 409;
+
+  constructor() {
+    super("The shared expense split references unavailable or invalid state.");
+    this.name = "SharedExpenseStateError";
+  }
+}
+
+export class ReceivableSettlementStateError extends Error {
+  readonly code = "receivable_settlement_conflict";
+  readonly status = 409;
+
+  constructor() {
+    super("The receivable settlement no longer fits the outstanding balance.");
+    this.name = "ReceivableSettlementStateError";
   }
 }
 
@@ -215,7 +241,8 @@ export async function commitLedgerTransaction(
   sql: LedgerSql,
   input: CommitTransactionInput,
 ): Promise<CommitTransactionResponse> {
-  const requestHash = hashTransactionCommand(input.command);
+  const requestHash =
+    input.requestHash ?? hashTransactionCommand(input.command);
   const commandJson = canonicalCommandJson(input.command);
   const preview = previewTransaction(input.command);
   if (input.previewHash && input.previewHash !== preview.previewHash) {
@@ -351,6 +378,69 @@ export async function commitLedgerTransaction(
               throw new LedgerReferenceError();
             }
           }
+        }
+
+        if (input.sharedExpenseId) {
+          if (input.command.type !== "shared_expense") {
+            throw new SharedExpenseStateError();
+          }
+          const personIds = input.command.shares.map(
+            ({ personId }) => personId,
+          );
+          if (new Set(personIds).size !== personIds.length) {
+            throw new SharedExpenseStateError();
+          }
+          const people = await tx`
+            select id::text
+              from app_private.counterparties
+             where user_id = ${input.userId}::uuid
+               and active
+               and type = 'person'
+               and id = any(${personIds}::uuid[])
+             for share
+          `;
+          if (people.length !== personIds.length) {
+            throw new SharedExpenseStateError();
+          }
+        }
+
+        let lockedSettlement:
+          | {
+              readonly id: string;
+              readonly nominal_amount: string;
+              readonly collected_amount: string;
+            }
+          | undefined;
+        if (input.settlementObligationId) {
+          if (
+            input.command.type !== "receivable_settlement" ||
+            input.command.receivableId !== input.settlementObligationId
+          ) {
+            throw new ReceivableSettlementStateError();
+          }
+          const obligations = await tx<
+            {
+              readonly id: string;
+              readonly nominal_amount: string;
+              readonly collected_amount: string;
+            }[]
+          >`
+            select id::text, nominal_amount::text, collected_amount::text
+              from app_private.obligations
+             where user_id = ${input.userId}::uuid
+               and id = ${input.settlementObligationId}::uuid
+               and direction = 'receivable'
+               and collectability_status <> 'closed'
+             for update
+          `;
+          lockedSettlement = obligations[0];
+          if (!lockedSettlement) throw new ReceivableSettlementStateError();
+          const allowed = await tx<{ readonly allowed: boolean }[]>`
+            select ${input.command.amount}::numeric
+              <= (${lockedSettlement.nominal_amount}::numeric
+                - ${lockedSettlement.collected_amount}::numeric) as allowed
+          `;
+          if (!allowed[0]?.allowed) throw new ReceivableSettlementStateError();
         }
 
         const transactionId = randomUUID();
@@ -583,6 +673,103 @@ export async function commitLedgerTransaction(
             `;
             if (!updated[0]) throw new SubscriptionCycleStateError();
           }
+        }
+
+        if (input.sharedExpenseId) {
+          if (input.command.type !== "shared_expense") {
+            throw new SharedExpenseStateError();
+          }
+          const sharedExpenseId = input.sharedExpenseId;
+          await tx`
+            insert into app_private.shared_expenses (
+              id, user_id, payment_transaction_id, total_paid, owner_share,
+              rounding_amount, currency, sharing_status
+            ) values (
+              ${sharedExpenseId}::uuid, ${input.userId}::uuid,
+              ${transactionId}::uuid, ${input.command.totalAmount}::numeric,
+              ${input.command.ownerShare}::numeric,
+              ${input.command.roundingAmount ?? "0.00"}::numeric,
+              ${input.command.currency}, 'split'
+            )
+          `;
+          for (const share of input.command.shares) {
+            const obligationId = randomUUID();
+            await tx`
+              insert into app_private.obligations (
+                id, user_id, person_id, direction, origin_type, currency,
+                nominal_amount, collected_amount, collectability_status,
+                estimated_collectible_amount, include_in_net_worth,
+                include_in_planning
+              ) values (
+                ${obligationId}::uuid, ${input.userId}::uuid,
+                ${share.personId}::uuid, 'receivable', 'shared_expense',
+                ${input.command.currency}, ${share.amount}::numeric, 0,
+                'collectible', ${share.amount}::numeric, true, true
+              )
+            `;
+            await tx`
+              insert into app_private.shared_expense_shares (
+                id, user_id, shared_expense_id, person_id, share_amount,
+                receivable_id
+              ) values (
+                ${randomUUID()}::uuid, ${input.userId}::uuid,
+                ${sharedExpenseId}::uuid, ${share.personId}::uuid,
+                ${share.amount}::numeric, ${obligationId}::uuid
+              )
+            `;
+          }
+        }
+
+        if (input.settlementObligationId && lockedSettlement) {
+          if (input.command.type !== "receivable_settlement") {
+            throw new ReceivableSettlementStateError();
+          }
+          const updated = await tx`
+            update app_private.obligations
+               set collected_amount = collected_amount + ${input.command.amount}::numeric,
+                   estimated_collectible_amount = least(
+                     estimated_collectible_amount,
+                     nominal_amount - collected_amount - ${input.command.amount}::numeric
+                   ),
+                   collectability_status = case
+                     when collected_amount + ${input.command.amount}::numeric = nominal_amount
+                       then 'closed'
+                     else collectability_status
+                   end
+             where user_id = ${input.userId}::uuid
+               and id = ${lockedSettlement.id}::uuid
+               and collected_amount + ${input.command.amount}::numeric <= nominal_amount
+            returning id
+          `;
+          if (!updated[0]) throw new ReceivableSettlementStateError();
+          await tx`
+            insert into app_private.settlements (
+              id, user_id, obligation_id, transaction_id, amount
+            ) values (
+              ${randomUUID()}::uuid, ${input.userId}::uuid,
+              ${lockedSettlement.id}::uuid, ${transactionId}::uuid,
+              ${input.command.amount}::numeric
+            )
+          `;
+          await tx`
+            update app_private.shared_expense_shares
+               set settled_amount = settled_amount + ${input.command.amount}::numeric
+             where user_id = ${input.userId}::uuid
+               and receivable_id = ${lockedSettlement.id}::uuid
+          `;
+          await tx`
+            update app_private.shared_expenses as expense
+               set sharing_status = 'closed'
+             where expense.user_id = ${input.userId}::uuid
+               and expense.sharing_status = 'split'
+               and not exists (
+                 select 1
+                   from app_private.shared_expense_shares as share
+                  where share.user_id = expense.user_id
+                    and share.shared_expense_id = expense.id
+                    and share.settled_amount <> share.share_amount
+               )
+          `;
         }
 
         for (const link of preview.links) {
