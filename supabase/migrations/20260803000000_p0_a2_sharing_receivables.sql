@@ -383,11 +383,17 @@ declare
   transaction_amount numeric(19,4);
   transaction_type text;
   transaction_input jsonb;
+  new_record jsonb;
 begin
-  target_obligation_id := case
-    when tg_table_name = 'obligations' then new.id
-    else new.obligation_id
-  end;
+  -- This deferred trigger is shared by obligation and settlement rows.
+  -- Resolve table-specific trigger fields through one record projection.
+  new_record := to_jsonb(new);
+  target_obligation_id := (
+    new_record ->> case
+      when tg_table_name = 'obligations' then 'id'
+      else 'obligation_id'
+    end
+  )::uuid;
   select user_id, nominal_amount, collected_amount
     into target_user_id, nominal, collected
     from app_private.obligations
@@ -406,10 +412,11 @@ begin
     select primary_amount, event_type, input_json
       into transaction_amount, transaction_type, transaction_input
       from app_private.transactions
-     where user_id = target_user_id and id = new.transaction_id;
+     where user_id = target_user_id
+       and id = (new_record ->> 'transaction_id')::uuid;
     if not found
       or transaction_type <> 'receivable_settlement'
-      or transaction_amount <> new.amount
+      or transaction_amount <> (new_record ->> 'amount')::numeric(19,4)
       or (transaction_input ->> 'receivableId')::uuid <> target_obligation_id
     then
       raise exception using errcode = '23514', message = 'settlement must match its receivable ledger transaction';

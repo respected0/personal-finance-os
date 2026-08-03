@@ -9,17 +9,18 @@
 - Güncel çalışma branch'i: `feat/p0-a2-sharing-receivables`
 - Açık PR: [#14](https://github.com/respected0/personal-finance-os/pull/14), açık;
   database/migration-smoke dışındaki 9 zorunlu CI işi PASS. Son database CI
-  hatası incelendi; deferred shared-expense trigger'ındaki çok-tabla `NEW`
-  alan çözümü düzeltildi ve yeniden doğrulama için push bekliyor.
+  hatası incelendi; shared-expense ve settlement deferred trigger'larındaki
+  çok-tabla `NEW` alan çözümü düzeltildi ve yeniden doğrulama için push bekliyor.
 - Son PASS sonuçları: PR #13 için 10/10 CI; PostgreSQL 17.6; Supabase CLI 2.110.0;
   P0-A2 B037–B043 gerçek PostgreSQL, browser, fresh migration, iki reset, checksum,
   drift, Auth/RLS ve secret scan PASS. Bu dilimde geçici Node 24.18.0 + pnpm 11.18.0 ile
   `format:check`, `lint`, `typecheck`, 110 unit test, `build`, migration policy ve
   OpenAPI lint/bundle PASS.
 - Son FAIL komutu ve kök nedeni: PR #14 `database / migration-smoke` çalışmasında
-  `assert_shared_expense_invariants()` `shared_expenses` trigger'ında olmayan
-  `NEW.shared_expense_id` alanını çözmeye çalıştı. Migration, trigger kaydını
-  tablo-bağımsız `to_jsonb(NEW)` üzerinden okuyacak şekilde düzeltildi. Yerelde
+  shared-expense alanı düzeltmesinden sonra `assert_settlement_invariants()`
+  `obligations` trigger'ında olmayan `NEW.obligation_id` alanını çözmeye çalıştı.
+  Migration'ın iki çok-tabla deferred trigger'ı artık tablo-bağımsız
+  `to_jsonb(NEW)` record projeksiyonunu kullanıyor. Yerelde
   `pnpm install --frozen-lockfile`, format, lint, typecheck, 110 unit test,
   build, migration policy ve OpenAPI lint/bundle PASS. `pnpm contracts:check` OpenAPI lint/bundle sonrasında
   Docker tabanlı `oasdiff` çağrısında; `pnpm security:secret-scan` Docker tabanlı
