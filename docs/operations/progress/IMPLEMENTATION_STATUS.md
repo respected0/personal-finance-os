@@ -9,7 +9,7 @@
 - Güncel çalışma branch'i: `feat/p0-b2-investment-ui-g6`
 - Açık PR: Yok; B078–B082 yerel kapısı tamamlandıktan sonra açılacak.
 - Son PASS sonuçları: `pnpm check` (123 unit), OpenAPI lint/bundle/additive breaking, secret/runtime/browser-storage ve fixture scope; gerçek PostgreSQL B073–B077 ile B081 SERIALIZABLE/FOR UPDATE eşzamanlı tek-kazanan/partial-state 0; fresh migration ve iki reset checksum `4a233b3e282a588d5acff69e1402af1edbefd3c759f3041ab162b8b2b90d2644`, drift 0; RLS/lifecycle PASS. B078–B080/B082 browser senaryosu CI runner doğrulamasını bekliyor.
-- Son FAIL komutu ve kök nedeni: PR #27 ilk browser çalışması, B069 beklenen ödeme gerçekleşmesinin üst özeti yenilememesi nedeniyle UAT-10 öncesi eski net-servet değerini yakaladı. Canonical backend değer doğruydu; planlama callback'i ana özeti yenileyecek minimum ürün düzeltmesi yapıldı. Yerel browser ayrıca host `libnspr4.so` eksikliği nedeniyle başlayamıyor; CI runner kanıtı kapatır.
+- Son FAIL komutu ve kök nedeni: PR #27 ikinci browser çalışması mobil sık-gider senaryosunda yatırım alımı öncesindeki eski banka bakiyesini bekliyordu; canonical nakit bakiyesi UAT-10 alımından sonra 1.320,00 TRY azalarak 22.060,00 TRY oldu. Mobil preview kanıtı doğru yeni nakit bakiyesi 22.047,66 TRY olarak güncellendi. İlk çalışmadaki stale üst özet ürün callback'i de düzeltildi.
 - Oluşturulan migration'lar: `20260804213000_p0_b2_instrument_prices.sql`; `20260804230000_p0_b2_investment_trades_lots.sql`. Bu dilimde yeni migration gerekmiyor.
 - Bilinen teknik borç ve uyarılar: Yerel Linux browser shared-library eksikliği nedeniyle B082 browser kanıtı CI'da kapanır. Production kaynakları bilinçli olarak oluşturulmadı.
 - Dış kaynak veya kullanıcı kararı bekleyen maddeler: Yok.

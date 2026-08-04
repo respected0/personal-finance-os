@@ -699,7 +699,7 @@ async function runMobile(cookie, fixture) {
   await page.getByLabel("Kaynak hesap").selectOption(fixture.bankAccountId);
   await page.locator("#entry-category").selectOption(fixture.expenseCategoryId);
   const effect = page.getByTestId("effect-summary");
-  await expect(effect).toContainText("23.367,66 TRY");
+  await expect(effect).toContainText("22.047,66 TRY");
   await expect(effect).toContainText("Gider etkisi12,34 TRY");
   assert(
     Date.now() - startedAt < 20_000,

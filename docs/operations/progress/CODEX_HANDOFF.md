@@ -8,7 +8,7 @@
 - Açık PR/CI: Yok; ürün commit'inden sonra açılacak.
 - Commitlenmemiş dosyalar: yatırım workspace/CSS/daily shell; portfolio allocation contract/repository; PostgreSQL concurrency ve browser UAT; CI investment acceptance; progress/handoff.
 - Son PASS komutları: `pnpm check` (123 unit), `pnpm contracts:check`, `pnpm investment:integration`, `pnpm db:smoke` (checksum iki kez `4a233b3e282a588d5acff69e1402af1edbefd3c759f3041ab162b8b2b90d2644`, drift 0), `pnpm rls:integration`, `pnpm data-lifecycle:integration`, fixture ve secret/runtime taramaları.
-- Son FAIL ve kök neden: PR #27 ilk browser çalışması, B069 realization sonrası ana finans özetinin stale kalması nedeniyle UAT-10 net-servet öncesi değeri eski yakaladı. Backend canonical değer doğru; `PlanningWorkspace` realization callback'i ana veriyi yenileyecek minimum düzeltme yapıldı. Yerel Chromium ayrıca `libnspr4.so` eksikliğiyle başlayamıyor; CI runner etkilenmiyor.
+- Son FAIL ve kök neden: PR #27 ikinci browser çalışması mobil preview'da UAT-10 yatırım alımından önceki banka bakiyesini bekledi; doğru banka bakiyesi 1.320,00 TRY nakit çıkışı sonrası 22.060,00 TRY ve preview sonrası 22.047,66 TRY. Assertion canonical nakit etkisine güncellendi. İlk koşudaki stale üst özet callback'i de ürün tarafında düzeltildi.
 - Migration durumu: P0-B2 iki migration main üzerinde; bu dilim schema değişikliği yapmıyor.
 - Kalan kabul kriterleri: B078–B082 PR CI browser/database dâhil 10/10 ve merge; formal G6; B083–B091/formal G7; PRE-RC readiness. RC B092+ başlatılmayacak.
 - Doğrudan devam talimatı: diff/status kontrolünden sonra commit/push/PR aç; `gh pr checks <PR> --watch --interval 20`; FAIL logunu düzelt, yalnız 10/10 PASS sonrası merge; G6 kanıt PR'ını kapat ve B083'e geç.
