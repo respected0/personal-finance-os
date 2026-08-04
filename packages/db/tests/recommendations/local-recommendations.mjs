@@ -1,9 +1,12 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import {
+  createMonthlyReportVersion,
+  createMonthlyReview,
   createLedgerSql,
   evaluateRecommendationRun,
   listRecommendations,
   putRecommendationSetting,
+  recordRecommendationFeedback,
   RecommendationNotFoundError,
   RecommendationVersionConflictError,
 } from "../../dist/index.js";
@@ -20,6 +23,10 @@ const userA = randomUUID();
 const userB = randomUUID();
 const augustRunId = randomUUID();
 const septemberRunId = randomUUID();
+const keyring = {
+  activeKeyId: "local-review-key-v1",
+  keys: new Map([["local-review-key-v1", randomBytes(32)]]),
+};
 let stackStarted = false;
 
 function assert(value, message) {
@@ -195,10 +202,62 @@ try {
       history[1]?.effective_to === null,
     "B084 effective setting history was overwritten instead of versioned.",
   );
+  const later = await recordRecommendationFeedback(sql, {
+    userId: userA,
+    recommendationId: first[0].id,
+    feedback: "later",
+  });
+  assert(
+    later.status === "later" && later.cooldownUntil !== null,
+    "B086 later feedback did not produce a visible bounded cooldown.",
+  );
+  const report = await createMonthlyReportVersion(sql, keyring, {
+    userId: userA,
+    period: "2026-08",
+    reason: "SYN-B087 immutable review fixture",
+  });
+  assert(report.id, "B087 immutable monthly report version was not created.");
+  const review = await createMonthlyReview(sql, {
+    userId: userA,
+    period: "2026-08",
+    reportVersionId: report.id,
+    investableRunId: augustRunId,
+    checklist: {
+      report: true,
+      budget: true,
+      goals: true,
+      investments: true,
+      recommendations: true,
+    },
+    decision: "hold",
+  });
+  assert(
+    review.reportVersionId === report.id &&
+      review.investableRunId === augustRunId &&
+      review.reviewVersion === "monthly-review-1.0.0" &&
+      Object.values(review.checklist).every(Boolean),
+    "B087/B088 review detached from report/investable versions or checklist.",
+  );
+  try {
+    await sql`
+      update app_private.monthly_reviews
+      set report_version_id=${randomUUID()}::uuid where id=${review.id}::uuid
+    `;
+    throw new Error("Historical review source link unexpectedly changed.");
+  } catch (error) {
+    assert(
+      error?.code === "55000",
+      `B087 immutable source link returned unexpected error: ${error?.message}`,
+    );
+  }
   console.log("P0-B3 B083 R-01–R-15 registry/version acceptance: PASS");
   console.log("P0-B3 B084 threshold/override/effective-date acceptance: PASS");
   console.log(
     "P0-B3 B085 canonical investable_run consumer, exact evidence, idempotency and RLS: PASS",
+  );
+  console.log("P0-B3 B086 feedback/cooldown explainability acceptance: PASS");
+  console.log(
+    "P0-B3 B087/B088 immutable monthly review and checklist acceptance: PASS",
   );
 } finally {
   await sql.end({ timeout: 5 }).catch(() => undefined);

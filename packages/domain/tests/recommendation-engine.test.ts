@@ -1,6 +1,8 @@
+import fc from "fast-check";
 import { describe, expect, test } from "vitest";
 import {
   evaluateRecommendation,
+  Money,
   RECOMMENDATION_ALTERNATIVE_FORMULA,
   traceRecommendationRule,
 } from "../src/index.ts";
@@ -57,5 +59,37 @@ describe("P0-B3 recommendation evaluation", () => {
     });
     expect(result.differenceAmount).toBe("-0.0001");
     expect(result.alternativeAmount).toBe("0.00");
+  });
+
+  test("keeps threshold difference and alternative exact across boundaries", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 9_000_000 }),
+        fc.integer({ min: 0, max: 9_000_000 }),
+        fc.integer({ min: 0, max: 9_000_000 }),
+        (canonicalUnits, thresholdUnits, reserveUnits) => {
+          const amount = (units: number) =>
+            `${Math.trunc(units / 10_000)}.${String(units % 10_000).padStart(4, "0")}`;
+          const result = evaluateRecommendation({
+            period: "2026-08-01",
+            investableRunId: "01980f42-0000-7000-8000-000000000070",
+            sourceWatermark: "2026-08-04T12:00:00.000Z",
+            canonicalInvestableAmount: amount(canonicalUnits),
+            usedThreshold: amount(thresholdUnits),
+            scenarioReserveAmount: amount(reserveUnits),
+          });
+          const signedDifference = `${canonicalUnits < thresholdUnits ? "-" : ""}${amount(Math.abs(canonicalUnits - thresholdUnits))}`;
+          expect(result.differenceAmount).toBe(
+            Money.from(signedDifference, "TRY").toCanonical(),
+          );
+          expect(
+            Money.from(result.alternativeAmount, "TRY").compare(
+              Money.zero("TRY"),
+            ),
+          ).toBeGreaterThanOrEqual(0);
+        },
+      ),
+      { numRuns: 200 },
+    );
   });
 });

@@ -97,6 +97,7 @@ export function MonthlyReportWorkspace({
   const [report, setReport] = useState<Report | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [decision, setDecision] = useState("hold");
 
   const categoryNames = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
@@ -150,6 +151,45 @@ export function MonthlyReportWorkspace({
         versionError instanceof Error
           ? versionError.message
           : "Rapor sürümü oluşturulamadı.",
+      );
+    }
+  }
+
+  async function completeReview(event: React.FormEvent) {
+    event.preventDefault();
+    if (!report?.id || report.source !== "version") {
+      setError("Aylık inceleme önce değişmez bir rapor sürümü gerektirir.");
+      return;
+    }
+    try {
+      const investable = await request<{ readonly id: string }>(
+        "/api/v1/planning/investable-runs",
+      );
+      await request("/api/v1/monthly-reviews", {
+        method: "POST",
+        body: JSON.stringify({
+          period,
+          reportVersionId: report.id,
+          investableRunId: investable.id,
+          checklist: {
+            report: true,
+            budget: true,
+            goals: true,
+            investments: true,
+            recommendations: true,
+          },
+          decision,
+        }),
+      });
+      setNotice(
+        `Aylık inceleme rapor v${report.version} ve kanonik yatırılabilir run ile tamamlandı.`,
+      );
+      setError("");
+    } catch (reviewError) {
+      setError(
+        reviewError instanceof Error
+          ? reviewError.message
+          : "Aylık inceleme tamamlanamadı.",
       );
     }
   }
@@ -317,6 +357,32 @@ export function MonthlyReportWorkspace({
         </label>
         <button className="secondary-button" type="submit">
           Yeni sürümü koru
+        </button>
+      </form>
+      <form className="report-version-form" onSubmit={completeReview}>
+        <div>
+          <h3>10 dakikalık aylık inceleme</h3>
+          <p className="muted">
+            Rapor → bütçe → hedef → yatırım → öneri kontrol listesi tek akışta
+            tamamlanır; kaynak sürümler sonradan değişmez.
+          </p>
+        </div>
+        <label>
+          Karar
+          <select
+            value={decision}
+            onChange={(event) => setDecision(event.target.value)}
+          >
+            <option value="hold">Planı koru</option>
+            <option value="adjust_budget">Bütçeyi ayarla</option>
+            <option value="adjust_goal">Hedefi ayarla</option>
+            <option value="review_investment">
+              Yatırımı yeniden değerlendir
+            </option>
+          </select>
+        </label>
+        <button className="secondary-button" type="submit">
+          İncelemeyi tamamla
         </button>
       </form>
     </section>
