@@ -1,0 +1,98 @@
+RecommendationRuleCode:
+  type: string
+  pattern: "^R-(?:0[1-9]|1[0-5])$"
+RecommendationMoney:
+  type: string
+  pattern: "^-?(?:0|[1-9][0-9]*)\\.[0-9]{1,4}$"
+RecommendationNonNegativeMoney:
+  type: string
+  pattern: "^(?:0|[1-9][0-9]*)\\.[0-9]{1,4}$"
+RecommendationStatus:
+  enum: [active, later, dismissed, done]
+RecommendationSettingPut:
+  type: object
+  additionalProperties: false
+  required: [enabled, threshold, effectiveFrom]
+  properties:
+    enabled: { type: boolean }
+    threshold: { $ref: "#/RecommendationNonNegativeMoney" }
+    effectiveFrom: { type: string, format: date }
+    effectiveTo:
+      oneOf: [{ type: string, format: date }, { type: "null" }]
+RecommendationSetting:
+  allOf:
+    - { $ref: "#/RecommendationSettingPut" }
+    - type: object
+      additionalProperties: false
+      required: [id, ruleCode, ruleVersion, effectiveTo, rowVersion]
+      properties:
+        id: { type: string, format: uuid }
+        ruleCode: { $ref: "#/RecommendationRuleCode" }
+        ruleVersion: { type: integer, minimum: 1 }
+        effectiveTo:
+          oneOf: [{ type: string, format: date }, { type: "null" }]
+        rowVersion: { type: integer, minimum: 1 }
+RecommendationEvidence:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      period,
+      threshold,
+      observedAmount,
+      differenceAmount,
+      alternativeAmount,
+      investableRunId,
+      formula,
+      sourceWatermark,
+    ]
+  properties:
+    period: { type: string, format: date }
+    threshold: { $ref: "#/RecommendationNonNegativeMoney" }
+    observedAmount: { $ref: "#/RecommendationNonNegativeMoney" }
+    differenceAmount: { $ref: "#/RecommendationMoney" }
+    alternativeAmount: { $ref: "#/RecommendationNonNegativeMoney" }
+    investableRunId: { type: string, format: uuid }
+    formula:
+      const: max(0, canonical_investable_amount - scenario_reserve_amount)
+    sourceWatermark: { type: string, format: date-time }
+Recommendation:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      runId,
+      investableRunId,
+      ruleCode,
+      ruleVersion,
+      period,
+      sourceWatermark,
+      engineVersion,
+      usedThreshold,
+      observedAmount,
+      differenceAmount,
+      impactAmount,
+      alternativeAmount,
+      status,
+      cooldownUntil,
+      evidence,
+    ]
+  properties:
+    id: { type: string, format: uuid }
+    runId: { type: string, format: uuid }
+    investableRunId: { type: string, format: uuid }
+    ruleCode: { $ref: "#/RecommendationRuleCode" }
+    ruleVersion: { type: integer, minimum: 1 }
+    period: { type: string, format: date }
+    sourceWatermark: { type: string, format: date-time }
+    engineVersion: { const: recommendation-engine-1.0.0 }
+    usedThreshold: { $ref: "#/RecommendationNonNegativeMoney" }
+    observedAmount: { $ref: "#/RecommendationNonNegativeMoney" }
+    differenceAmount: { $ref: "#/RecommendationMoney" }
+    impactAmount: { $ref: "#/RecommendationNonNegativeMoney" }
+    alternativeAmount: { $ref: "#/RecommendationNonNegativeMoney" }
+    status: { $ref: "#/RecommendationStatus" }
+    cooldownUntil:
+      oneOf: [{ type: string, format: date-time }, { type: "null" }]
+    evidence: { $ref: "#/RecommendationEvidence" }

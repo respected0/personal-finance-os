@@ -7,5 +7,6 @@ export * from "./ledger/uat-rules.js";
 export * from "./money/money.js";
 export * from "./money/tr-locale.js";
 export * from "./planning/investable.js";
+export * from "./recommendations/evaluate.js";
 
 export const domainBoundary = "domain";

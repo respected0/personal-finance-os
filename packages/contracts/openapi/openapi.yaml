@@ -6,7 +6,7 @@ info:
   description: >-
     Local and future server contract. P0-A0 exposes typed preview and commit
     boundaries; clients never submit ledger postings or owner identifiers.
-  version: 1.13.0
+  version: 1.14.0
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
@@ -40,6 +40,8 @@ tags:
     description: Fresh-step-up export, quarantine restore validation and deletion hold
   - name: Planning
     description: Monthly budgets, ledger-derived actuals, goals and virtual allocations
+  - name: Recommendations
+    description: Versioned, explainable scenarios consuming the canonical investable result
 paths:
   /api/v1/health:
     get:
@@ -1287,6 +1289,69 @@ paths:
             application/json:
               schema: { $ref: "./components/planning.yaml#/InvestableRun" }
         "403": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/recommendations:
+    get:
+      operationId: listRecommendations
+      summary: List explainable recommendations and their immutable source evidence
+      tags: [Recommendations]
+      x-required-aal: aal1
+      parameters:
+        - name: period
+          in: query
+          schema: { type: string, pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])$" }
+        - name: status
+          in: query
+          schema:
+            { $ref: "./components/recommendation.yaml#/RecommendationStatus" }
+      responses:
+        "200":
+          description: Owned recommendations with rule, threshold and canonical run trace
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  { $ref: "./components/recommendation.yaml#/Recommendation" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/recommendation-settings/{rule}:
+    put:
+      operationId: putRecommendationSetting
+      summary: Create a dated rule threshold override with optimistic concurrency
+      tags: [Recommendations]
+      x-required-aal: aal2
+      parameters:
+        - name: rule
+          in: path
+          required: true
+          schema:
+            { $ref: "./components/recommendation.yaml#/RecommendationRuleCode" }
+        - name: If-Match
+          in: header
+          required: true
+          description: Zero creates the first effective setting; otherwise the current row version.
+          schema: { type: integer, minimum: 0 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: "./components/recommendation.yaml#/RecommendationSettingPut",
+              }
+      responses:
+        "200":
+          description: Effective versioned threshold setting
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: "./components/recommendation.yaml#/RecommendationSetting",
+                }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
+        "409": { $ref: "#/components/responses/ProblemResponse" }
         "422": { $ref: "#/components/responses/ProblemResponse" }
   /api/v1/market-prices:
     get:

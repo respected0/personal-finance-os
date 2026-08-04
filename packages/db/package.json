@@ -24,6 +24,7 @@
     "test:data-lifecycle": "node tests/data-lifecycle/local-data-lifecycle.mjs",
     "test:planning": "node tests/planning/local-planning.mjs",
     "test:investments": "node tests/investments/local-investments.mjs",
+    "test:recommendations": "node tests/recommendations/local-recommendations.mjs",
     "test:ledger": "node tests/ledger/local-ledger.mjs",
     "test:rls": "node tests/rls/local-rls.mjs",
     "typecheck": "pnpm --filter @personal-finance-os/domain build && tsc -p tsconfig.json --noEmit"
