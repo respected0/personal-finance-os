@@ -6,7 +6,7 @@ info:
   description: >-
     Local and future server contract. P0-A0 exposes typed preview and commit
     boundaries; clients never submit ledger postings or owner identifiers.
-  version: 1.11.0
+  version: 1.12.0
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
@@ -1323,6 +1323,62 @@ paths:
               schema: { $ref: "./components/investment.yaml#/MarketPrice" }
         "403": { $ref: "#/components/responses/ProblemResponse" }
         "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/investment-trades/preview:
+    post:
+      operationId: previewInvestmentTrade
+      summary: Preview a fee-inclusive investment buy without writing
+      tags: [Investments]
+      x-required-aal: aal2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./components/ledger.yaml#/InvestmentBuyCommand" }
+      responses:
+        "200":
+          description: Cash and position posting impact with zero consumption expense
+          content:
+            application/json:
+              schema: { $ref: "./components/ledger.yaml#/TransactionPreview" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/investment-trades:
+    post:
+      operationId: commitInvestmentTrade
+      summary: Commit an investment buy, ledger event and fee-inclusive lot atomically
+      tags: [Investments]
+      x-required-aal: aal2
+      parameters:
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: "./components/investment.yaml#/InvestmentTradeCommitRequest",
+              }
+      responses:
+        "200":
+          description: Idempotent replay of the same trade, ledger and lot
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: "./components/investment.yaml#/InvestmentTradeCommitResponse",
+                }
+        "201":
+          description: Trade, balanced ledger and lot committed atomically
+          content:
+            application/json:
+              schema:
+                {
+                  $ref: "./components/investment.yaml#/InvestmentTradeCommitResponse",
+                }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "409": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+        "503": { $ref: "#/components/responses/ProblemResponse" }
 components:
   securitySchemes:
     cookieAuth:
