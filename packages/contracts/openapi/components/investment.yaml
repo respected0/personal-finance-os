@@ -202,6 +202,7 @@ PortfolioPosition:
       isEstimated,
       valuationStatus,
       marketValue,
+      allocationPercent,
       unrealizedProfitLoss,
     ]
   properties:
@@ -229,4 +230,5 @@ PortfolioPosition:
     isEstimated: { type: boolean }
     valuationStatus: { enum: [priced, missing_price] }
     marketValue: { type: [string, "null"] }
+    allocationPercent: { type: [string, "null"] }
     unrealizedProfitLoss: { type: [string, "null"] }

@@ -160,7 +160,7 @@ jobs:
         run: pnpm --filter @personal-finance-os/web exec playwright install --with-deps chromium
       - name: Verify local auth foundation
         run: pnpm auth:check
-      - name: Verify P0-A1/P0-A2 desktop and mobile finance flows
+      - name: Verify P0-A through P0-B2 desktop and mobile finance flows
         run: pnpm daily:browser
 
   rls:

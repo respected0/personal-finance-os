@@ -100,6 +100,7 @@ export interface PortfolioPosition {
   readonly isEstimated: boolean;
   readonly valuationStatus: "priced" | "missing_price";
   readonly marketValue: string | null;
+  readonly allocationPercent: string | null;
   readonly unrealizedProfitLoss: string | null;
 }
 
@@ -679,6 +680,7 @@ export async function getPortfolio(
         readonly source_type: MarketPrice["sourceType"] | null;
         readonly price_is_estimated: boolean | null;
         readonly market_value: string | null;
+        readonly allocation_percent: string | null;
         readonly unrealized_profit_loss: string | null;
       }[]
     >`
@@ -690,7 +692,8 @@ export async function getPortfolio(
         where user_id=${input.userId}::uuid and quantity_open > 0
         group by instrument_id
       )
-      select instrument.id::text instrument_id, instrument.symbol, instrument.name,
+      , valued as (
+        select instrument.id::text instrument_id, instrument.symbol, instrument.name,
         instrument.instrument_type, instrument.unit, instrument.currency,
         instrument.active, position.quantity::text, position.cost_basis::text,
         position.average_unit_cost::text, price.price::text,
@@ -710,7 +713,18 @@ export async function getPortfolio(
           and price_at <= ${input.asOf}::timestamptz
         order by price_at desc, id desc limit 1
       ) price on true
-      order by instrument.symbol, instrument.id
+      )
+      select valued.*,
+        case when market_value is null or
+          sum(market_value::numeric) filter (where market_value is not null) over () = 0
+          then null
+          else round(
+            market_value::numeric * 100 /
+            sum(market_value::numeric) filter (where market_value is not null) over (), 4
+          )::numeric(9,4)::text
+        end allocation_percent
+      from valued
+      order by symbol, instrument_id
     `,
   );
   return rows.map((row) => ({
@@ -732,6 +746,7 @@ export async function getPortfolio(
     isEstimated: row.price_is_estimated ?? true,
     valuationStatus: row.price === null ? "missing_price" : "priced",
     marketValue: row.market_value,
+    allocationPercent: row.allocation_percent,
     unrealizedProfitLoss: row.unrealized_profit_loss,
   }));
 }

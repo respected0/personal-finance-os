@@ -23,6 +23,7 @@ import { ReceivablesWorkspace } from "./receivables-workspace";
 import { ReconciliationWorkspace } from "./reconciliation-workspace";
 import { MonthlyReportWorkspace } from "./monthly-report-workspace";
 import { PlanningWorkspace } from "./planning-workspace";
+import { InvestmentWorkspace } from "./investment-workspace";
 
 interface AccountBalance {
   accountId: string;
@@ -99,6 +100,10 @@ interface MonthlyDashboardReport {
     readonly netExpense: string;
     readonly savings: string;
   };
+}
+
+interface PortfolioCostPosition {
+  readonly costBasis: string;
 }
 
 interface ProblemDetails {
@@ -180,6 +185,15 @@ function exactNetWorth(accounts: readonly FinancialAccount[]): Money {
   }, Money.zero("TRY"));
 }
 
+function exactInvestmentCostBasis(
+  positions: readonly PortfolioCostPosition[],
+): Money {
+  return positions.reduce(
+    (total, position) => total.add(Money.from(position.costBasis, "TRY")),
+    Money.zero("TRY"),
+  );
+}
+
 function accountKind(account: FinancialAccount): "bank" | "cash" {
   if (account.accountType !== "bank" && account.accountType !== "cash") {
     throw new Error("P0-A1 işlemleri yalnız banka veya nakit hesabı kullanır.");
@@ -231,6 +245,7 @@ export function DailyCoreApp() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [history, setHistory] = useState<HistoryPage>(emptyHistory);
   const [dashboard, setDashboard] = useState<HistoryPage>(emptyHistory);
+  const [portfolio, setPortfolio] = useState<PortfolioCostPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [entryOpen, setEntryOpen] = useState(false);
@@ -315,6 +330,7 @@ export function DailyCoreApp() {
         nextCategories,
         nextHistory,
         nextDashboard,
+        nextPortfolio,
       ] = await Promise.all([
         jsonRequest<FinancialAccount[]>("/api/v1/accounts"),
         jsonRequest<Institution[]>("/api/v1/institutions"),
@@ -325,11 +341,13 @@ export function DailyCoreApp() {
         jsonRequest<MonthlyDashboardReport>(
           `/api/v1/reports/monthly/${month.from.slice(0, 7)}?version=latest`,
         ),
+        jsonRequest<PortfolioCostPosition[]>("/api/v1/portfolio"),
       ]);
       setAccounts(nextAccounts);
       setInstitutions(nextInstitutions);
       setCategories(nextCategories);
       setHistory(nextHistory);
+      setPortfolio(nextPortfolio);
       setDashboard({
         items: [],
         nextCursor: null,
@@ -620,7 +638,10 @@ export function DailyCoreApp() {
     }
   }
 
-  const netWorth = useMemo(() => exactNetWorth(accounts), [accounts]);
+  const netWorth = useMemo(
+    () => exactNetWorth(accounts).add(exactInvestmentCostBasis(portfolio)),
+    [accounts, portfolio],
+  );
   const selectedSource = accounts.find(
     ({ id }) => id === draft.sourceAccountId,
   );
@@ -751,6 +772,12 @@ export function DailyCoreApp() {
         accounts={accounts}
         categories={categories}
         refreshToken={`${dashboard.aggregate.normalIncome}:${dashboard.aggregate.personalExpense}:${dashboard.aggregate.net}`}
+      />
+
+      <InvestmentWorkspace
+        accounts={accounts}
+        refreshToken={`${dashboard.aggregate.normalIncome}:${dashboard.aggregate.personalExpense}:${dashboard.aggregate.net}`}
+        onCommitted={loadData}
       />
 
       <DataLifecycleWorkspace />

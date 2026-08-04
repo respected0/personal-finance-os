@@ -180,6 +180,28 @@ async function createFixture(cookie) {
     "Açılış bakiyesi fixture metrikleri değiştirdi.",
   );
 
+  const goldPrice = await api("/api/v1/market-prices", {
+    cookie,
+    method: "POST",
+    body: {
+      instrument: {
+        symbol: "XAU-UAT-10",
+        name: "Sentetik 1.31 g banka altını",
+        instrumentType: "bank_gold",
+        unit: "gram",
+        currency: "TRY",
+      },
+      price: "1000.0000000000",
+      priceAt: "2026-08-04T12:00:00.000Z",
+      sourceType: "reference_fixture",
+      isEstimated: false,
+    },
+  });
+  assert(
+    goldPrice.response.status === 201,
+    "UAT-10 sentetik banka altını fiyatı oluşturulamadı.",
+  );
+
   const cardProfile = await api("/api/v1/cards", {
     cookie,
     method: "POST",
@@ -223,6 +245,7 @@ async function createFixture(cookie) {
     cardAccountId,
     expenseCategoryId,
     subscriptionCycleId: subscription.payload.cycles[0].id,
+    goldInstrumentId: goldPrice.payload.instrument.id,
   };
 }
 
@@ -580,6 +603,51 @@ async function runDesktop(cookie, fixture) {
     "bir kez gelir",
   );
 
+  const investmentWorkspace = page.locator(".investment-workspace");
+  const expenseBeforeInvestment = await page
+    .getByTestId("report-expense")
+    .innerText();
+  const netWorthBeforeInvestment = await page
+    .getByTestId("net-worth")
+    .innerText();
+  await investmentWorkspace
+    .getByLabel("Nakit hesabı")
+    .selectOption(fixture.bankAccountId);
+  await investmentWorkspace
+    .getByLabel("Yatırım aracı")
+    .selectOption(fixture.goldInstrumentId);
+  await investmentWorkspace.getByLabel("Miktar").fill("1,3100000000");
+  await investmentWorkspace.getByLabel("Birim fiyat").fill("1000,0000000000");
+  await investmentWorkspace.getByLabel("Ücret").fill("10,0000");
+  await expect(page.getByTestId("investment-cash-total")).toContainText(
+    "1.320,00 TRY",
+  );
+  await investmentWorkspace
+    .getByRole("button", { name: "Yatırım işlemini kaydet" })
+    .click();
+  await expect(investmentWorkspace.getByRole("status")).toContainText(
+    "tüketim gideri 0",
+  );
+  const goldPosition = page
+    .getByTestId("portfolio-list")
+    .locator(".portfolio-position")
+    .filter({ hasText: "XAU-UAT-10" });
+  await expect(goldPosition).toContainText("1.3100000000 g");
+  await expect(goldPosition).toContainText("Maliyet1.320,00 TRY");
+  await expect(goldPosition).toContainText("Değer1.310,00 TRY");
+  await expect(goldPosition).toContainText("Gerçekleşmemiş K/Z-10,00 TRY");
+  await expect(goldPosition).toContainText("%100.0000");
+  await expect(goldPosition).toContainText("Referans fiyat");
+  await expect(page.getByTestId("period-expense")).toHaveText(
+    expenseBeforeInvestment,
+  );
+  await expect(page.getByTestId("report-expense")).toHaveText(
+    expenseBeforeInvestment,
+  );
+  await expect(page.getByTestId("net-worth")).toHaveText(
+    netWorthBeforeInvestment,
+  );
+
   await page
     .locator("#history-account-filter")
     .selectOption(fixture.bankAccountId);
@@ -762,6 +830,9 @@ try {
   console.log("P0-A3 UAT-13 dashboard/monthly report zero difference: PASS");
   console.log("P0-B1 B064/B065/UAT-11 budget-goal browser evidence: PASS");
   console.log("P0-B1 B068-B072/UAT-09 planning browser evidence: PASS");
+  console.log(
+    "P0-B2 B078-B080/B082 UAT-10 exact trade form, 1.31 g portfolio and report evidence: PASS",
+  );
 } finally {
   await browser?.close();
   if (webProcess && webProcess.exitCode === null) {
