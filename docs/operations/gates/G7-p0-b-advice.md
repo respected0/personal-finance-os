@@ -1,6 +1,6 @@
 # G7 — P0-B3 Advice and Monthly Review Gate
 
-Durum: **PASS adayı — PR CI kanıtı bekleniyor**
+Durum: **PASS**
 
 ## Kapsam
 
@@ -18,6 +18,8 @@ Durum: **PASS adayı — PR CI kanıtı bekleniyor**
 
 - PR #29: B083–B085, 10/10 CI PASS, merge `1877aef7a6adc2f0ec2f27cfefdedde7b815697b`.
 - PR #30: B086–B090 product slice, 10/10 CI PASS, merge `ebe38baa69b7b1b8e3419cf6f2c120bb830b8dd2`.
+- PR #31: B091 UAT-14 browser and formal G7 closure, 10/10 CI PASS, merge
+  `cc9bfa3cba92d3857f39e74b81e572fa042f6d75`.
 - PostgreSQL 17.6 acceptance: registry 15/15; effective history and stale If-Match rejection; canonical run identity; idempotency; cross-user result 0; feedback/cooldown; immutable review source link negative.
 - Fresh migration and two resets: checksum `998787558c5f0eca306f3996ebbfce925f4e675e58538a9efa606547ddd8d226` twice, schema drift 0.
 - `pnpm check`: 127 unit tests, exact 200-case recommendation property, OpenAPI lint/bundle/breaking, typecheck, build, secret/runtime/fixture scans PASS.
@@ -32,4 +34,8 @@ Durum: **PASS adayı — PR CI kanıtı bekleniyor**
 
 ## Exit decision
 
-G7 becomes **PASS** only after this evidence branch has all 10 required GitHub checks PASS and is merged to `main`. RC B092+ is not started by this gate.
+PR #31 head `39365ce8775a68d9b92ce18146af6fd4aa3db975` passed all ten
+required GitHub checks. The database workflow completed in 10m36s and the
+auth/browser workflow in 3m28s. The evidence was merged to `main` as
+`cc9bfa3cba92d3857f39e74b81e572fa042f6d75`; therefore **G7 is PASS**.
+RC B092+ was not started by this gate.
