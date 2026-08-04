@@ -9,7 +9,7 @@
 - Güncel çalışma branch'i: `feat/p0-b2-investment-ui-g6`
 - Açık PR: Yok; B078–B082 yerel kapısı tamamlandıktan sonra açılacak.
 - Son PASS sonuçları: `pnpm check` (123 unit), OpenAPI lint/bundle/additive breaking, secret/runtime/browser-storage ve fixture scope; gerçek PostgreSQL B073–B077 ile B081 SERIALIZABLE/FOR UPDATE eşzamanlı tek-kazanan/partial-state 0; fresh migration ve iki reset checksum `4a233b3e282a588d5acff69e1402af1edbefd3c759f3041ab162b8b2b90d2644`, drift 0; RLS/lifecycle PASS. B078–B080/B082 browser senaryosu CI runner doğrulamasını bekliyor.
-- Son FAIL komutu ve kök nedeni: Yerel `pnpm daily:browser`, Linux hostta Playwright Chromium için `libnspr4.so` bulunmadığından ürün koduna ulaşmadan FAIL. Ürün/test kodu veya Docker kaynaklı değil; aynı senaryo CI Ubuntu runner'ında zorunlu check olarak çalışacak. İlk 60 saniyelik komut sınırı yalnız build sonrası timeout oluşturdu ve daha uzun yeniden çalıştırmada gerçek host kök nedeni kanıtlandı.
+- Son FAIL komutu ve kök nedeni: PR #27 ilk browser çalışması, B069 beklenen ödeme gerçekleşmesinin üst özeti yenilememesi nedeniyle UAT-10 öncesi eski net-servet değerini yakaladı. Canonical backend değer doğruydu; planlama callback'i ana özeti yenileyecek minimum ürün düzeltmesi yapıldı. Yerel browser ayrıca host `libnspr4.so` eksikliği nedeniyle başlayamıyor; CI runner kanıtı kapatır.
 - Oluşturulan migration'lar: `20260804213000_p0_b2_instrument_prices.sql`; `20260804230000_p0_b2_investment_trades_lots.sql`. Bu dilimde yeni migration gerekmiyor.
 - Bilinen teknik borç ve uyarılar: Yerel Linux browser shared-library eksikliği nedeniyle B082 browser kanıtı CI'da kapanır. Production kaynakları bilinçli olarak oluşturulmadı.
 - Dış kaynak veya kullanıcı kararı bekleyen maddeler: Yok.

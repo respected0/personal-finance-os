@@ -772,6 +772,7 @@ export function DailyCoreApp() {
         accounts={accounts}
         categories={categories}
         refreshToken={`${dashboard.aggregate.normalIncome}:${dashboard.aggregate.personalExpense}:${dashboard.aggregate.net}`}
+        onCommitted={loadData}
       />
 
       <InvestmentWorkspace
