@@ -8,12 +8,13 @@ import {
   type FinancialAccountKind,
   type LedgerChart,
   type NonRevisionTransactionCommand,
+  type OriginalPosting,
   type PlannedPosting,
   type PostingPlan,
   type TransactionCommand,
 } from "@personal-finance-os/domain";
 import postgres from "postgres";
-import { applyUserScope } from "./user-scope.js";
+import { applyUserScope, withUserScope } from "./user-scope.js";
 
 export type LedgerSql = ReturnType<typeof postgres>;
 
@@ -31,6 +32,14 @@ export interface CommitTransactionInput {
   readonly sharedExpenseId?: string;
   /** Creates the B047 settlement aggregate atomically with its ledger payment. */
   readonly settlementObligationId?: string;
+  /** Requires the final posting plan to affect this owned financial account. */
+  readonly requiredFinancialAccountId?: string;
+  /** Internal aggregate hook; executes inside the same SERIALIZABLE transaction. */
+  readonly beforeFinalize?: (context: {
+    readonly tx: postgres.TransactionSql;
+    readonly transactionId: string;
+    readonly preview: PostingPlan & { readonly previewHash: string };
+  }) => Promise<void>;
 }
 
 export interface CommitTransactionResponse {
@@ -123,6 +132,16 @@ export class ReceivableSettlementStateError extends Error {
   constructor() {
     super("The receivable settlement no longer fits the outstanding balance.");
     this.name = "ReceivableSettlementStateError";
+  }
+}
+
+export class RevisionConflictError extends Error {
+  readonly code = "revision_conflict";
+  readonly status = 409;
+
+  constructor() {
+    super("The original transaction already has a reversal or is unavailable.");
+    this.name = "RevisionConflictError";
   }
 }
 
@@ -344,6 +363,12 @@ export async function commitLedgerTransaction(
           if (!financialAccounts.has(accountId)) {
             throw new LedgerReferenceError();
           }
+        }
+        if (
+          input.requiredFinancialAccountId &&
+          !postingAccountIds.has(input.requiredFinancialAccountId)
+        ) {
+          throw new LedgerReferenceError();
         }
 
         const activeCommands =
@@ -792,6 +817,8 @@ export async function commitLedgerTransaction(
           `;
         }
 
+        await input.beforeFinalize?.({ tx, transactionId, preview });
+
         await tx`
           update app_private.transactions
              set status = 'posted',
@@ -899,6 +926,15 @@ export async function commitLedgerTransaction(
       if (!isRetryableDatabaseError(error)) {
         throw error;
       }
+      const constraint = (error as { readonly constraint_name?: unknown })
+        .constraint_name;
+      if (
+        String((error as { readonly code?: unknown }).code) === "23505" &&
+        typeof constraint === "string" &&
+        constraint.includes("revers")
+      ) {
+        throw new RevisionConflictError();
+      }
       if (attempt < 3) {
         await waitBeforeRetry(attempt);
       }
@@ -906,4 +942,153 @@ export async function commitLedgerTransaction(
   }
 
   throw new SerializationRetryExhaustedError();
+}
+
+interface OriginalTransactionForRevision {
+  readonly economicDate: string;
+  readonly currency: string;
+  readonly postings: readonly OriginalPosting[];
+}
+
+async function loadOriginalTransactionForRevision(
+  sql: LedgerSql,
+  userId: string,
+  transactionId: string,
+): Promise<OriginalTransactionForRevision> {
+  return withUserScope(sql, userId, async (tx) => {
+    const rows = await tx<
+      {
+        readonly economic_date: string;
+        readonly primary_currency: string;
+      }[]
+    >`
+      select economic_date::text, primary_currency
+        from app_private.transactions
+       where user_id = ${userId}::uuid
+         and id = ${transactionId}::uuid
+         and status = 'posted'
+       for share
+    `;
+    const original = rows[0];
+    if (!original) throw new LedgerReferenceError();
+    const postingRows = await tx<
+      {
+        readonly role: OriginalPosting["ledgerRole"];
+        readonly financial_account_id: string | null;
+        readonly side: OriginalPosting["side"];
+        readonly amount_original: string;
+        readonly currency: string;
+        readonly fx_rate: string;
+        readonly amount_base: string;
+      }[]
+    >`
+      select role, financial_account_id::text, side, amount_original::text,
+             currency, fx_rate::text, amount_base::text
+        from app_private.ledger_postings
+       where user_id = ${userId}::uuid
+         and transaction_id = ${transactionId}::uuid
+       order by sequence_no
+    `;
+    if (postingRows.length < 2) throw new RevisionConflictError();
+    return {
+      economicDate: original.economic_date,
+      currency: original.primary_currency.trim(),
+      postings: postingRows.map((posting) => ({
+        ledgerRole: posting.role,
+        ...(posting.financial_account_id
+          ? { financialAccountId: posting.financial_account_id }
+          : {}),
+        side: posting.side,
+        amount: posting.amount_original,
+        currency: posting.currency.trim(),
+        fxRate: posting.fx_rate,
+        amountBase: posting.amount_base,
+      })),
+    };
+  });
+}
+
+function publicRevisionHash(value: Readonly<Record<string, unknown>>): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+export async function commitVoidTransaction(
+  sql: LedgerSql,
+  input: {
+    readonly userId: string;
+    readonly transactionId: string;
+    readonly idempotencyKey: string;
+    readonly requestId: string;
+    readonly reason: string;
+  },
+): Promise<CommitTransactionResponse> {
+  const original = await loadOriginalTransactionForRevision(
+    sql,
+    input.userId,
+    input.transactionId,
+  );
+  return commitLedgerTransaction(sql, {
+    userId: input.userId,
+    idempotencyKey: input.idempotencyKey,
+    requestId: input.requestId,
+    requestHash: publicRevisionHash({
+      operation: "void",
+      reason: input.reason,
+      transactionId: input.transactionId,
+    }),
+    command: {
+      type: "void",
+      occurredAt: new Date().toISOString(),
+      economicDate: original.economicDate,
+      currency: original.currency,
+      originalTransactionId: input.transactionId,
+      originalPostings: original.postings,
+      reason: input.reason,
+    },
+  });
+}
+
+export async function commitRevisedTransaction(
+  sql: LedgerSql,
+  input: {
+    readonly userId: string;
+    readonly transactionId: string;
+    readonly idempotencyKey: string;
+    readonly requestId: string;
+    readonly reason: string;
+    readonly replacement: NonRevisionTransactionCommand;
+  },
+): Promise<CommitTransactionResponse> {
+  const original = await loadOriginalTransactionForRevision(
+    sql,
+    input.userId,
+    input.transactionId,
+  );
+  if (
+    input.replacement.currency !== original.currency ||
+    input.replacement.economicDate !== original.economicDate
+  ) {
+    throw new RevisionConflictError();
+  }
+  return commitLedgerTransaction(sql, {
+    userId: input.userId,
+    idempotencyKey: input.idempotencyKey,
+    requestId: input.requestId,
+    requestHash: publicRevisionHash({
+      operation: "revise",
+      reason: input.reason,
+      replacement: input.replacement,
+      transactionId: input.transactionId,
+    }),
+    command: {
+      type: "revise",
+      occurredAt: new Date().toISOString(),
+      economicDate: original.economicDate,
+      currency: original.currency,
+      originalTransactionId: input.transactionId,
+      originalPostings: original.postings,
+      reason: input.reason,
+      replacement: input.replacement,
+    },
+  });
 }

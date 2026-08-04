@@ -346,9 +346,144 @@ try {
     "Account balance API ledger projection sonucu hatalı.",
   );
 
+  const aal1Snapshot = await api(`/api/v1/accounts/${accountId}/snapshots`, {
+    cookie: aal1Cookie,
+    method: "POST",
+    body: {
+      observedAt: "2026-08-31T23:59:00+03:00",
+      statedBalance: "19580.00",
+    },
+  });
+  assert(
+    aal1Snapshot.response.status === 403 &&
+      aal1Snapshot.payload.code === "mfa_required",
+    "B051 snapshot write AAL1 ile reddedilmedi.",
+  );
+  const snapshotResult = await api(`/api/v1/accounts/${accountId}/snapshots`, {
+    cookie: aal2Cookie,
+    method: "POST",
+    body: {
+      observedAt: "2026-08-31T23:59:00+03:00",
+      statedBalance: "19580.00",
+    },
+  });
+  assert(
+    snapshotResult.response.status === 201 &&
+      snapshotResult.payload.calculatedBalance === "19572.5000" &&
+      snapshotResult.payload.difference === "7.5000",
+    "B051 snapshot API exact difference üretmedi.",
+  );
+  const injectedReconciliationOwner = await api("/api/v1/reconciliations", {
+    cookie: aal2Cookie,
+    method: "POST",
+    body: {
+      userId: syntheticUserId,
+      accountId,
+      periodStart: "2026-08-01",
+      periodEnd: "2026-08-31",
+      snapshotIds: [snapshotResult.payload.id],
+    },
+  });
+  assert(
+    injectedReconciliationOwner.response.status === 422,
+    "B051 reconciliation owner injection reddedilmedi.",
+  );
+  const reconciliationResult = await api("/api/v1/reconciliations", {
+    cookie: aal2Cookie,
+    method: "POST",
+    body: {
+      accountId,
+      periodStart: "2026-08-01",
+      periodEnd: "2026-08-31",
+      snapshotIds: [snapshotResult.payload.id],
+    },
+  });
+  assert(
+    reconciliationResult.response.status === 201 &&
+      reconciliationResult.payload.unresolvedCount === 1,
+    "B051 reconciliation session API başarısız.",
+  );
+  const resolutionResult = await api(
+    `/api/v1/reconciliations/${reconciliationResult.payload.id}/resolve`,
+    {
+      cookie: aal2Cookie,
+      method: "POST",
+      idempotencyKey: randomUUID(),
+      body: {
+        itemId: reconciliationResult.payload.items[0].id,
+        resolutionType: "accepted",
+        reason: "Sentetik API mutabakat kabulü",
+      },
+    },
+  );
+  assert(
+    resolutionResult.response.status === 201 &&
+      resolutionResult.payload.transaction === null &&
+      resolutionResult.payload.session.status === "resolved",
+    "B052 accepted resolution API finansal yazma yapmadan kapanmadı.",
+  );
+
+  const injectedVoid = await api(
+    `/api/v1/transactions/${commitResult.payload.transactionId}/void`,
+    {
+      cookie: aal2Cookie,
+      method: "POST",
+      idempotencyKey: randomUUID(),
+      body: {
+        reason: "Sentetik enjeksiyon reddi",
+        originalPostings: commitResult.payload.postings,
+      },
+    },
+  );
+  assert(
+    injectedVoid.response.status === 422,
+    "B053 client-supplied original postings reddedilmedi.",
+  );
+  const voidResult = await api(
+    `/api/v1/transactions/${commitResult.payload.transactionId}/void`,
+    {
+      cookie: aal2Cookie,
+      method: "POST",
+      idempotencyKey: randomUUID(),
+      body: { reason: "Sentetik API iptali" },
+    },
+  );
+  assert(
+    voidResult.response.status === 201 &&
+      voidResult.payload.effects.personalExpenseDelta === "-427.50",
+    "B053 void API original işlemi tam ters çevirmedi.",
+  );
+  const revisionBase = await api("/api/v1/transactions", {
+    cookie: aal2Cookie,
+    method: "POST",
+    idempotencyKey: randomUUID(),
+    body: {
+      command: { ...expenseCommand, amount: "100.00" },
+    },
+  });
+  const reviseResult = await api(
+    `/api/v1/transactions/${revisionBase.payload.transactionId}/revise`,
+    {
+      cookie: aal2Cookie,
+      method: "POST",
+      idempotencyKey: randomUUID(),
+      body: {
+        reason: "Sentetik API tutar revizyonu",
+        replacement: { ...expenseCommand, amount: "110.00" },
+      },
+    },
+  );
+  assert(
+    reviseResult.response.status === 201 &&
+      reviseResult.payload.effects.personalExpenseDelta === "10.00",
+    "B053 revise API reverse+replacement etkisini üretmedi.",
+  );
+
   console.log("P0-A1 BFF AAL1 write rejection / AAL2 write: PASS");
   console.log("P0-A1 BFF owner injection / cross-site rejection: PASS");
   console.log("P0-A1 BFF account/opening/preview/commit/history/balance: PASS");
+  console.log("P0-A3 B051/B052 snapshot/reconciliation API security: PASS");
+  console.log("P0-A3 B053 void/revise API server-owned originals: PASS");
 } finally {
   if (webProcess && webProcess.exitCode === null) {
     webProcess.kill("SIGTERM");

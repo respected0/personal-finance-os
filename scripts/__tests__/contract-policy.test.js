@@ -5,8 +5,8 @@ import {
   problemDetailsSchema,
 } from "../../packages/contracts/src/index.ts";
 
-describe("B005/P0-A2 contract boundary", () => {
-  test("exposes only approved foundation, ledger, daily-core and P0-A2 paths", async () => {
+describe("B005/P0-A3 contract boundary", () => {
+  test("exposes only approved foundation through reconciliation paths", async () => {
     const specification = await readFile(
       "packages/contracts/openapi/openapi.yaml",
       "utf8",
@@ -31,6 +31,10 @@ describe("B005/P0-A2 contract boundary", () => {
       "packages/contracts/openapi/components/sharing.yaml",
       "utf8",
     );
+    const reconciliationComponents = await readFile(
+      "packages/contracts/openapi/components/reconciliation.yaml",
+      "utf8",
+    );
 
     expect(specification).toContain("openapi: 3.1.0");
     expect(specification).toContain("/api/v1/health:");
@@ -51,6 +55,9 @@ describe("B005/P0-A2 contract boundary", () => {
       "/api/v1/accounts/{accountId}/opening-balance",
       "/api/v1/accounts/{accountId}",
       "/api/v1/accounts/{accountId}/balance",
+      "/api/v1/accounts/{accountId}/snapshots",
+      "/api/v1/reconciliations",
+      "/api/v1/reconciliations/{reconciliationId}/resolve",
       "/api/v1/categories",
       "/api/v1/cards",
       "/api/v1/cards/{cardId}/statements",
@@ -65,7 +72,7 @@ describe("B005/P0-A2 contract boundary", () => {
       "/api/v1/receivables/{receivableId}/settlements",
     ]);
     expect(specification).not.toMatch(
-      /\/api\/v1\/(budgets|investments|ledger|reconciliations|reports)/u,
+      /\/api\/v1\/(budgets|investments|ledger|reports)/u,
     );
     expect(ledgerComponents).not.toMatch(
       /\b(userId|user_id|originalPostings|outstandingAmount|availableQuantity|costBasis|alreadyRealized)\b/u,
@@ -77,6 +84,9 @@ describe("B005/P0-A2 contract boundary", () => {
     expect(subscriptionComponents).not.toMatch(/\b(userId|user_id)\b/u);
     expect(sharingComponents).not.toMatch(
       /\b(userId|user_id|name_enc|name_key_id|name_nonce|name_auth_tag)\b/u,
+    );
+    expect(reconciliationComponents).not.toMatch(
+      /\b(userId|user_id|reason_enc|note_enc|originalPostings)\b/u,
     );
   });
 
