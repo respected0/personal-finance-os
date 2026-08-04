@@ -255,11 +255,75 @@ async function runDesktop(cookie, fixture) {
   });
   await context.addCookies(browserCookies(cookie));
   const page = await context.newPage();
+  let recommendationFeedback;
+  const recommendation = {
+    id: "01980f42-0000-7000-8000-000000000083",
+    runId: "01980f42-0000-7000-8000-000000000084",
+    investableRunId: "01980f42-0000-7000-8000-000000000070",
+    ruleCode: "R-01",
+    ruleVersion: 1,
+    period: "2026-08-01",
+    sourceWatermark: "2026-08-04T12:00:00.000Z",
+    engineVersion: "recommendation-engine-1.0.0",
+    usedThreshold: "1000.0000",
+    observedAmount: "1234.5678",
+    differenceAmount: "234.5678",
+    impactAmount: "1234.5678",
+    alternativeAmount: "984.4428",
+    status: "active",
+    cooldownUntil: null,
+    evidence: {
+      period: "2026-08-01",
+      threshold: "1000.00",
+      observedAmount: "1234.5678",
+      differenceAmount: "234.5678",
+      alternativeAmount: "984.4428",
+      investableRunId: "01980f42-0000-7000-8000-000000000070",
+      formula: "max(0, canonical_investable_amount - scenario_reserve_amount)",
+      sourceWatermark: "2026-08-04T12:00:00.000Z",
+    },
+  };
+  await page.route("**/api/v1/recommendations?*", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([recommendation]),
+    }),
+  );
+  await page.route("**/api/v1/recommendations/*/feedback", async (route) => {
+    recommendationFeedback = route.request().postDataJSON()?.feedback;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...recommendation,
+        status: recommendationFeedback === "later" ? "later" : "active",
+      }),
+    });
+  });
   await page.goto(webUrl);
   await expect(
     page.getByRole("heading", { name: "Bugünün finans görünümü" }),
   ).toBeVisible();
   await expect(page.getByTestId("net-worth")).toHaveText("20.000,00 TRY");
+  const recommendationCard = page.getByTestId("recommendation-card");
+  await expect(recommendationCard).toContainText("R-01 · v1");
+  await expect(recommendationCard).toContainText(
+    "Kanonik tutar: 1.234,5678 TRY",
+  );
+  await expect(recommendationCard).toContainText(
+    "Kullanılan eşik: 1.000,00 TRY",
+  );
+  await expect(recommendationCard).toContainText("Fark: 234,5678 TRY");
+  await expect(recommendationCard).toContainText("Alternatif: 984,4428 TRY");
+  await recommendationCard.getByRole("button", { name: "Sonra" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Geri bildirim sürümlü öneriye kaydedildi.",
+  );
+  assert(
+    recommendationFeedback === "later",
+    "UAT-14 feedback action did not preserve the selected bounded cooldown intent.",
+  );
 
   await page.getByRole("button", { name: "+ İşlem", exact: true }).click();
   await page.getByRole("button", { name: "İşlemi kaydet" }).click();
@@ -832,6 +896,9 @@ try {
   console.log("P0-B1 B068-B072/UAT-09 planning browser evidence: PASS");
   console.log(
     "P0-B2 B078-B080/B082 UAT-10 exact trade form, 1.31 g portfolio and report evidence: PASS",
+  );
+  console.log(
+    "P0-B3 B086/B089/B090 UAT-14 rule version, threshold, difference, alternative and feedback E2E: PASS",
   );
 } finally {
   await browser?.close();
