@@ -75,6 +75,9 @@ export const recommendationSchema = z
       .strict(),
   })
   .strict();
+export const recommendationFeedbackSchema = z
+  .object({ feedback: z.enum(["helpful", "later", "dismissed", "done"]) })
+  .strict();
 
 export type RecommendationQuery = z.infer<typeof recommendationQuerySchema>;
 export type RecommendationSettingPut = z.infer<
@@ -82,3 +85,6 @@ export type RecommendationSettingPut = z.infer<
 >;
 export type RecommendationSetting = z.infer<typeof recommendationSettingSchema>;
 export type Recommendation = z.infer<typeof recommendationSchema>;
+export type RecommendationFeedback = z.infer<
+  typeof recommendationFeedbackSchema
+>;

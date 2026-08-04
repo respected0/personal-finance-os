@@ -8,6 +8,7 @@ export * from "./investment-repository.js";
 export * from "./monthly-report-repository.js";
 export * from "./planning-repository.js";
 export * from "./recommendation-repository.js";
+export * from "./monthly-review-repository.js";
 export * from "./protected-text-crypto.js";
 export * from "./reconciliation-repository.js";
 export * from "./sharing-repository.js";

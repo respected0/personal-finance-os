@@ -103,6 +103,8 @@ describe("B005/P0-B1 contract boundary", () => {
       "/api/v1/planning/investable-runs",
       "/api/v1/recommendations",
       "/api/v1/recommendation-settings/{rule}",
+      "/api/v1/recommendations/{recommendationId}/feedback",
+      "/api/v1/monthly-reviews",
       "/api/v1/market-prices",
       "/api/v1/investment-trades/preview",
       "/api/v1/investment-trades",

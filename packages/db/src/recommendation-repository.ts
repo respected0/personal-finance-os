@@ -330,3 +330,30 @@ export async function listRecommendations(
 ): Promise<readonly RecommendationRecord[]> {
   return selectRecommendations(sql, input);
 }
+
+export async function recordRecommendationFeedback(
+  sql: LedgerSql,
+  input: {
+    readonly userId: string;
+    readonly recommendationId: string;
+    readonly feedback: "helpful" | "later" | "dismissed" | "done";
+  },
+): Promise<RecommendationRecord> {
+  await withUserScope(sql, input.userId, async (tx) => {
+    const rows = await tx<{ readonly id: string }[]>`
+      update app_private.recommendations set
+        feedback=${input.feedback},
+        status=${input.feedback === "helpful" ? "active" : input.feedback},
+        cooldown_until=case when ${input.feedback}='later'
+          then now() + interval '7 days' else null end,
+        updated_at=now()
+      where user_id=${input.userId}::uuid and id=${input.recommendationId}::uuid
+      returning id::text
+    `;
+    if (!rows[0]) throw new RecommendationNotFoundError();
+  });
+  const rows = await selectRecommendations(sql, { userId: input.userId });
+  const result = rows.find(({ id }) => id === input.recommendationId);
+  if (!result) throw new RecommendationNotFoundError();
+  return result;
+}

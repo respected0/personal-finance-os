@@ -6,7 +6,7 @@ info:
   description: >-
     Local and future server contract. P0-A0 exposes typed preview and commit
     boundaries; clients never submit ledger postings or owner identifiers.
-  version: 1.14.0
+  version: 1.15.0
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
@@ -1351,6 +1351,56 @@ paths:
                 }
         "403": { $ref: "#/components/responses/ProblemResponse" }
         "404": { $ref: "#/components/responses/ProblemResponse" }
+        "409": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/recommendations/{recommendationId}/feedback:
+    post:
+      operationId: recordRecommendationFeedback
+      summary: Record helpful/later/dismissed/done feedback and bounded cooldown
+      tags: [Recommendations]
+      x-required-aal: aal2
+      parameters:
+        - name: recommendationId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: "./components/recommendation.yaml#/RecommendationFeedback",
+              }
+      responses:
+        "200":
+          description: Updated owned recommendation
+          content:
+            application/json:
+              schema:
+                { $ref: "./components/recommendation.yaml#/Recommendation" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/monthly-reviews:
+    post:
+      operationId: createMonthlyReview
+      summary: Complete a monthly review fixed to immutable report and investable versions
+      tags: [Recommendations]
+      x-required-aal: aal2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "./components/recommendation.yaml#/MonthlyReviewCreate" }
+      responses:
+        "201":
+          description: Version-traceable monthly review decision
+          content:
+            application/json:
+              schema:
+                { $ref: "./components/recommendation.yaml#/MonthlyReview" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
         "409": { $ref: "#/components/responses/ProblemResponse" }
         "422": { $ref: "#/components/responses/ProblemResponse" }
   /api/v1/market-prices:

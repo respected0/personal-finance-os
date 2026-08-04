@@ -96,3 +96,38 @@ Recommendation:
     cooldownUntil:
       oneOf: [{ type: string, format: date-time }, { type: "null" }]
     evidence: { $ref: "#/RecommendationEvidence" }
+RecommendationFeedback:
+  type: object
+  additionalProperties: false
+  required: [feedback]
+  properties:
+    feedback: { enum: [helpful, later, dismissed, done] }
+MonthlyReviewCreate:
+  type: object
+  additionalProperties: false
+  required: [period, reportVersionId, investableRunId, checklist, decision]
+  properties:
+    period: { type: string, pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])$" }
+    reportVersionId: { type: string, format: uuid }
+    investableRunId: { type: string, format: uuid }
+    checklist:
+      type: object
+      additionalProperties: false
+      required: [report, budget, goals, investments, recommendations]
+      properties:
+        report: { type: boolean }
+        budget: { type: boolean }
+        goals: { type: boolean }
+        investments: { type: boolean }
+        recommendations: { type: boolean }
+    decision: { enum: [hold, adjust_budget, adjust_goal, review_investment] }
+MonthlyReview:
+  allOf:
+    - { $ref: "#/MonthlyReviewCreate" }
+    - type: object
+      additionalProperties: false
+      required: [id, reviewVersion, completedAt]
+      properties:
+        id: { type: string, format: uuid }
+        reviewVersion: { const: monthly-review-1.0.0 }
+        completedAt: { type: string, format: date-time }

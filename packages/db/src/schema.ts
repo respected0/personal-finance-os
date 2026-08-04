@@ -1746,6 +1746,46 @@ export const recommendations = appPrivate.table(
   ],
 );
 
+export const monthlyReviews = appPrivate.table(
+  "monthly_reviews",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    period: date().notNull(),
+    reportVersionId: uuid("report_version_id").notNull(),
+    investableRunId: uuid("investable_run_id").notNull(),
+    checklistJson: jsonb("checklist_json").notNull(),
+    decision: text().notNull(),
+    reviewVersion: text("review_version").notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("monthly_reviews_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("monthly_reviews_source_unique").on(
+      table.userId,
+      table.period,
+      table.reportVersionId,
+      table.investableRunId,
+    ),
+    foreignKey({
+      columns: [table.userId, table.reportVersionId],
+      foreignColumns: [monthlyReportVersions.userId, monthlyReportVersions.id],
+      name: "monthly_reviews_report_version_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.investableRunId],
+      foreignColumns: [
+        planningInvestableRuns.userId,
+        planningInvestableRuns.id,
+      ],
+      name: "monthly_reviews_investable_run_fk",
+    }),
+  ],
+);
+
 export const investmentInstruments = appPrivate.table(
   "investment_instruments",
   {

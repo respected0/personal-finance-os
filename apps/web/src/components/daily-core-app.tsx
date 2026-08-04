@@ -24,6 +24,7 @@ import { ReconciliationWorkspace } from "./reconciliation-workspace";
 import { MonthlyReportWorkspace } from "./monthly-report-workspace";
 import { PlanningWorkspace } from "./planning-workspace";
 import { InvestmentWorkspace } from "./investment-workspace";
+import { RecommendationWorkspace } from "./recommendation-workspace";
 
 interface AccountBalance {
   accountId: string;
@@ -779,6 +780,10 @@ export function DailyCoreApp() {
         accounts={accounts}
         refreshToken={`${dashboard.aggregate.normalIncome}:${dashboard.aggregate.personalExpense}:${dashboard.aggregate.net}`}
         onCommitted={loadData}
+      />
+
+      <RecommendationWorkspace
+        refreshToken={`${dashboard.aggregate.normalIncome}:${dashboard.aggregate.personalExpense}:${dashboard.aggregate.net}`}
       />
 
       <DataLifecycleWorkspace />

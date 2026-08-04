@@ -21,6 +21,7 @@ const reconciliationMigrationName =
 const monthlyReportsMigrationName = "20260804143000_p0_a3_monthly_reports.sql";
 const dataLifecycleMigrationName = "20260804160000_p0_a3_data_lifecycle.sql";
 const recommendationMigrationName = "20260805000000_p0_b3_recommendations.sql";
+const monthlyReviewMigrationName = "20260805010000_p0_b3_monthly_reviews.sql";
 
 async function read(relativePath) {
   return readFile(path.join(rootDirectory, relativePath), "utf8");
@@ -75,6 +76,11 @@ if (!migrationFiles.includes(dataLifecycleMigrationName)) {
 if (!migrationFiles.includes(recommendationMigrationName)) {
   errors.push(
     `Eksik P0-B3 recommendation migration: ${recommendationMigrationName}.`,
+  );
+}
+if (!migrationFiles.includes(monthlyReviewMigrationName)) {
+  errors.push(
+    `Eksik P0-B3 monthly review migration: ${monthlyReviewMigrationName}.`,
   );
 }
 
@@ -151,6 +157,34 @@ for (const [pattern, message] of [
   if (!pattern.test(rlsHarnessMigration)) {
     errors.push(message);
   }
+}
+
+const monthlyReviewMigration = await read(
+  `supabase/migrations/${monthlyReviewMigrationName}`,
+);
+for (const [pattern, message] of [
+  [
+    /create\s+table\s+app_private\.monthly_reviews/i,
+    "B087 monthly_reviews tablosu eksik.",
+  ],
+  [
+    /foreign\s+key\s*\(user_id\s*,\s*report_version_id\)[\s\S]*monthly_report_versions/i,
+    "B087 immutable report version FK eksik.",
+  ],
+  [
+    /foreign\s+key\s*\(user_id\s*,\s*investable_run_id\)[\s\S]*planning_investable_runs/i,
+    "B087 canonical investable run FK eksik.",
+  ],
+  [
+    /monthly review source links and version are immutable/i,
+    "B087 historical review link immutability eksik.",
+  ],
+  [
+    /alter\s+table\s+app_private\.monthly_reviews\s+force\s+row\s+level\s+security/i,
+    "B087 monthly review forced RLS açık değil.",
+  ],
+]) {
+  if (!pattern.test(monthlyReviewMigration)) errors.push(message);
 }
 
 const dailyCoreMigration = await read(

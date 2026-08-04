@@ -31,6 +31,7 @@ const contractFiles = [
   "packages/contracts/openapi/components/data-lifecycle.yaml",
   "packages/contracts/openapi/components/planning.yaml",
   "packages/contracts/openapi/components/investment.yaml",
+  "packages/contracts/openapi/components/recommendation.yaml",
 ];
 let selectedBase;
 let baseRoot;

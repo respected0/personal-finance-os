@@ -7,6 +7,7 @@ export * from "./monthly-report.js";
 export * from "./planning.js";
 export * from "./investment.js";
 export * from "./recommendation.js";
+export * from "./monthly-review.js";
 export * from "./primitives.js";
 export * from "./problem-details.js";
 export * from "./reconciliation.js";

@@ -59,6 +59,7 @@ begin
           'recommendation_settings',
           'recommendation_runs',
           'recommendations',
+          'monthly_reviews',
           'investment_instruments',
           'market_prices',
           'investment_trades',
@@ -117,6 +118,7 @@ begin
     or exists (select 1 from app_private.recommendation_settings)
     or exists (select 1 from app_private.recommendation_runs)
     or exists (select 1 from app_private.recommendations)
+    or exists (select 1 from app_private.monthly_reviews)
     or exists (select 1 from app_private.investment_instruments)
     or exists (select 1 from app_private.market_prices)
     or exists (select 1 from app_private.investment_trades)
