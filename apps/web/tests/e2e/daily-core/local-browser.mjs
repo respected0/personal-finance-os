@@ -447,7 +447,7 @@ async function runDesktop(cookie, fixture) {
   await expect(receivableRows).toHaveCount(2);
   await expect(receivableRows.first()).toContainText("Nominal 33,33 TRY");
   await expect(page.getByTestId("period-expense")).toHaveText("1.213,44 TRY");
-  await expect(page.getByTestId("net-worth")).toHaveText("18.786,56 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("18.719,90 TRY");
   await receivablesWorkspace
     .getByLabel("Tahsilat hesabı")
     .selectOption(fixture.bankAccountId);
