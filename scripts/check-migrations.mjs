@@ -19,6 +19,7 @@ const sharingMigrationName = "20260803000000_p0_a2_sharing_receivables.sql";
 const reconciliationMigrationName =
   "20260804130000_p0_a3_reconciliation_reversal.sql";
 const monthlyReportsMigrationName = "20260804143000_p0_a3_monthly_reports.sql";
+const dataLifecycleMigrationName = "20260804160000_p0_a3_data_lifecycle.sql";
 
 async function read(relativePath) {
   return readFile(path.join(rootDirectory, relativePath), "utf8");
@@ -63,6 +64,11 @@ if (!migrationFiles.includes(reconciliationMigrationName)) {
 if (!migrationFiles.includes(monthlyReportsMigrationName)) {
   errors.push(
     `Eksik P0-A3 monthly reports migration: ${monthlyReportsMigrationName}.`,
+  );
+}
+if (!migrationFiles.includes(dataLifecycleMigrationName)) {
+  errors.push(
+    `Eksik P0-A3 data lifecycle migration: ${dataLifecycleMigrationName}.`,
   );
 }
 

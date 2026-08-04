@@ -25,10 +25,31 @@ describe("B004 migration policy", () => {
     "alter table example rename to renamed;",
     "create table transactions (id uuid);",
     "create extension pgcrypto;",
+    "delete from example;",
   ])("rejects forbidden SQL: %s", (sql) => {
     expect(
       findForbiddenMigrationPatterns(sql, { foundation: true }).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("allows only the explicitly reviewed auth.uid-scoped runtime user purge body", () => {
+    const sql = `
+      -- migration-policy: begin reviewed-runtime-user-purge
+      create function app_identity.purge_due_account_deletion(p_id uuid)
+      returns uuid language plpgsql security definer
+      set search_path = pg_catalog, app_identity, app_private, auth
+      as $function$
+      declare v_user_id uuid := auth.uid();
+      begin delete from app_private.example where user_id = v_user_id; return p_id; end
+      $function$;
+      -- migration-policy: end reviewed-runtime-user-purge
+    `;
+    expect(findForbiddenMigrationPatterns(sql)).toEqual([]);
+    expect(
+      findForbiddenMigrationPatterns(
+        sql.replace("security definer", "security invoker"),
+      ),
+    ).toContain("Yasak destructive migration kalıbı: DELETE FROM.");
   });
 
   it("accepts a non-destructive DROP NOT NULL widening", () => {

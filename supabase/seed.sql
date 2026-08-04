@@ -14,7 +14,9 @@ begin
         and relation.relname in (
           'profiles',
           'rls_probe_parents',
-          'rls_probe_children'
+          'rls_probe_children',
+          'account_deletion_requests',
+          'account_deletion_receipts'
         )
       )
       and not (
@@ -45,7 +47,10 @@ begin
           'balance_snapshots',
           'reconciliation_sessions',
           'reconciliation_items',
-          'monthly_report_versions'
+          'monthly_report_versions',
+          'export_jobs',
+          'backup_catalog',
+          'restore_validations'
         )
       )
   ) then
@@ -86,6 +91,11 @@ begin
     or exists (select 1 from app_private.reconciliation_sessions)
     or exists (select 1 from app_private.reconciliation_items)
     or exists (select 1 from app_private.monthly_report_versions)
+    or exists (select 1 from app_private.export_jobs)
+    or exists (select 1 from app_private.backup_catalog)
+    or exists (select 1 from app_private.restore_validations)
+    or exists (select 1 from app_identity.account_deletion_requests)
+    or exists (select 1 from app_identity.account_deletion_receipts)
   then
     raise exception 'Seed must not populate P0-A financial or operational rows.';
   end if;

@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { CardWorkspace } from "./card-workspace";
+import { DataLifecycleWorkspace } from "./data-lifecycle-workspace";
 import { SubscriptionWorkspace } from "./subscription-workspace";
 import { ReceivablesWorkspace } from "./receivables-workspace";
 import { ReconciliationWorkspace } from "./reconciliation-workspace";
@@ -744,6 +745,8 @@ export function DailyCoreApp() {
         categories={categories}
         refreshToken={`${dashboard.aggregate.normalIncome}:${dashboard.aggregate.personalExpense}:${dashboard.aggregate.net}`}
       />
+
+      <DataLifecycleWorkspace />
 
       {setupOpen && (
         <section className="panel setup-panel" aria-labelledby="setup-title">
