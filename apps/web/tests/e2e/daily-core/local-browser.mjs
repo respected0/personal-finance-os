@@ -541,6 +541,44 @@ async function runDesktop(cookie, fixture) {
   await expect(page.getByTestId("net-worth")).toHaveText(
     netWorthBeforeAllocation,
   );
+  const expectedForm = planningWorkspace.locator("form").filter({
+    has: page.getByRole("heading", { name: "Beklenen ödeme" }),
+  });
+  await expectedForm
+    .getByLabel("Beklenen ödeme kaynağı")
+    .fill("Sentetik tarayıcı beklenen ödemesi");
+  await expectedForm.getByLabel("Beklenen ödeme tutarı").fill("5000,0000");
+  await expectedForm.getByLabel("Beklenen ödeme tarihi").fill("2026-08-10");
+  await expectedForm
+    .getByRole("button", { name: "Beklenen ödemeyi ekle" })
+    .click();
+  await expect(planningWorkspace.getByRole("status")).toContainText(
+    "yatırılabilir tutar etkisi 0",
+  );
+  await expect(page.getByTestId("expected-payments")).toContainText(
+    "Gelir 0.0000 · net servet 0.0000 · yatırım 0.0000",
+  );
+  const investableForm = planningWorkspace.locator("form").filter({
+    has: page.getByRole("heading", { name: "Yatırılabilir tutar" }),
+  });
+  await investableForm.getByLabel("İşletme tamponu").fill("1000,0000");
+  await investableForm
+    .getByRole("button", { name: "Kanonik tutarı hesapla" })
+    .click();
+  await expect(page.getByTestId("investable-evidence")).toContainText(
+    "investable-formula-1.0.0",
+  );
+  await page
+    .getByTestId("expected-payments")
+    .getByLabel("Gerçekleşme hesabı")
+    .selectOption(fixture.bankAccountId);
+  await page
+    .getByTestId("expected-payments")
+    .getByRole("button", { name: "Gelir olarak gerçekleştir" })
+    .click();
+  await expect(planningWorkspace.getByRole("status")).toContainText(
+    "bir kez gelir",
+  );
 
   await page
     .locator("#history-account-filter")
@@ -575,7 +613,7 @@ async function runMobile(cookie, fixture) {
   await context.addCookies(browserCookies(cookie));
   const page = await context.newPage();
   await page.goto(webUrl);
-  await expect(page.getByTestId("net-worth")).toHaveText("18.729,90 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("23.729,90 TRY");
   const noInitialOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth <= window.innerWidth,
   );
@@ -593,7 +631,7 @@ async function runMobile(cookie, fixture) {
   await page.getByLabel("Kaynak hesap").selectOption(fixture.bankAccountId);
   await page.locator("#entry-category").selectOption(fixture.expenseCategoryId);
   const effect = page.getByTestId("effect-summary");
-  await expect(effect).toContainText("18.367,66 TRY");
+  await expect(effect).toContainText("23.367,66 TRY");
   await expect(effect).toContainText("Gider etkisi12,34 TRY");
   assert(
     Date.now() - startedAt < 20_000,
@@ -612,7 +650,7 @@ async function runMobile(cookie, fixture) {
   assert(noEntryOverflow, "390×844 işlem görünümünde yatay taşma var.");
   await page.getByRole("button", { name: "İşlemi kaydet" }).click();
   await expect(page.getByRole("status")).toContainText("Gider kaydedildi.");
-  await expect(page.getByTestId("net-worth")).toHaveText("18.717,56 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("23.717,56 TRY");
   await context.close();
 }
 
@@ -723,6 +761,7 @@ try {
   console.log("P0-A3 UAT-12 reconciliation desktop browser evidence: PASS");
   console.log("P0-A3 UAT-13 dashboard/monthly report zero difference: PASS");
   console.log("P0-B1 B064/B065/UAT-11 budget-goal browser evidence: PASS");
+  console.log("P0-B1 B068-B072/UAT-09 planning browser evidence: PASS");
 } finally {
   await browser?.close();
   if (webProcess && webProcess.exitCode === null) {

@@ -94,6 +94,9 @@ describe("B005/P0-B1 contract boundary", () => {
       "/api/v1/budgets/{period}",
       "/api/v1/goals",
       "/api/v1/goals/{goalId}/allocations",
+      "/api/v1/expected-payments",
+      "/api/v1/expected-payments/{expectedPaymentId}/realize",
+      "/api/v1/planning/investable-runs",
     ]);
     expect(specification).not.toMatch(
       /\/api\/v1\/(investments|ledger)(?:\/|:)/u,

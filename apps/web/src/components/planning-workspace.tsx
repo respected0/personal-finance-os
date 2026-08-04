@@ -47,6 +47,31 @@ interface Goal {
   readonly progressAmount: string;
   readonly ledgerPostingCount: 0;
 }
+interface ExpectedPayment {
+  readonly id: string;
+  readonly source: string;
+  readonly expectedAmount: string;
+  readonly expectedDate: string;
+  readonly certaintyLevel: "certain" | "likely" | "uncertain";
+  readonly status: "expected" | "overdue" | "received" | "cancelled";
+  readonly accountingEffect: {
+    readonly beforeRealizationIncome: "0.0000";
+    readonly beforeRealizationNetWorth: "0.0000";
+    readonly beforeRealizationInvestable: "0.0000";
+  };
+}
+interface InvestableRun {
+  readonly id: string;
+  readonly formulaVersion: string;
+  readonly policyVersion: string;
+  readonly liquidVerifiedAmount: string;
+  readonly committedOutflowAmount: string;
+  readonly operatingBufferAmount: string;
+  readonly nearTermGoalReserveAmount: string;
+  readonly excludedExpectedAmount: string;
+  readonly excludedDoubtfulReceivableAmount: string;
+  readonly canonicalInvestableAmount: string;
+}
 
 function currentPeriod() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -92,6 +117,17 @@ export function PlanningWorkspace({
   const [selectedGoal, setSelectedGoal] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("");
   const [allocationAmount, setAllocationAmount] = useState("");
+  const [expectedPayments, setExpectedPayments] = useState<
+    readonly ExpectedPayment[]
+  >([]);
+  const [expectedSource, setExpectedSource] = useState("");
+  const [expectedAmount, setExpectedAmount] = useState("");
+  const [expectedDate, setExpectedDate] = useState("");
+  const [expectedAccount, setExpectedAccount] = useState("");
+  const [operatingBuffer, setOperatingBuffer] = useState("");
+  const [investableRun, setInvestableRun] = useState<InvestableRun | null>(
+    null,
+  );
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const expenseCategories = useMemo(
@@ -103,11 +139,18 @@ export function PlanningWorkspace({
   );
 
   const load = useCallback(async () => {
-    const [goalResult, budgetResult] = await Promise.allSettled([
-      json<readonly Goal[]>("/api/v1/goals"),
-      json<Budget>(`/api/v1/budgets/${period}`),
-    ]);
+    const [goalResult, budgetResult, expectedResult, investableResult] =
+      await Promise.allSettled([
+        json<readonly Goal[]>("/api/v1/goals"),
+        json<Budget>(`/api/v1/budgets/${period}`),
+        json<readonly ExpectedPayment[]>("/api/v1/expected-payments"),
+        json<InvestableRun>("/api/v1/planning/investable-runs"),
+      ]);
     if (goalResult.status === "fulfilled") setGoals(goalResult.value);
+    if (expectedResult.status === "fulfilled")
+      setExpectedPayments(expectedResult.value);
+    if (investableResult.status === "fulfilled")
+      setInvestableRun(investableResult.value);
     if (budgetResult.status === "fulfilled") {
       setBudget(budgetResult.value);
       setAmounts(
@@ -209,6 +252,92 @@ export function PlanningWorkspace({
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Tahsis kaydedilemedi.",
+      );
+    }
+  }
+
+  async function addExpected(event: React.FormEvent) {
+    event.preventDefault();
+    try {
+      await json<ExpectedPayment>("/api/v1/expected-payments", {
+        method: "POST",
+        body: JSON.stringify({
+          source: expectedSource,
+          expectedAmount: expectedAmount.replace(",", "."),
+          expectedDate,
+          certaintyLevel: "likely",
+        }),
+      });
+      setExpectedSource("");
+      setExpectedAmount("");
+      setExpectedDate("");
+      await load();
+      setNotice(
+        "Beklenen ödeme kaydedildi: gelir, net servet ve yatırılabilir tutar etkisi 0.",
+      );
+      setError("");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Beklenen ödeme kaydedilemedi.",
+      );
+    }
+  }
+
+  async function realizeExpected(payment: ExpectedPayment) {
+    try {
+      const account = accounts.find((item) => item.id === expectedAccount);
+      if (
+        !account ||
+        (account.accountType !== "bank" && account.accountType !== "cash")
+      )
+        return;
+      const date = new Date().toISOString();
+      await json(`/api/v1/expected-payments/${payment.id}/realize`, {
+        method: "POST",
+        headers: { "idempotency-key": crypto.randomUUID() },
+        body: JSON.stringify({
+          targetAccountId: account.id,
+          targetKind: account.accountType,
+          currency: "TRY",
+          occurredAt: date,
+          economicDate: date.slice(0, 10),
+        }),
+      });
+      await load();
+      setNotice("Beklenen ödeme bir kez gelir olarak gerçekleşti.");
+      setError("");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Beklenen ödeme gerçekleştirilemedi.",
+      );
+    }
+  }
+
+  async function calculateInvestable(event: React.FormEvent) {
+    event.preventDefault();
+    try {
+      const run = await json<InvestableRun>(
+        "/api/v1/planning/investable-runs",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            asOf: new Date().toISOString().slice(0, 10),
+            operatingBufferAmount: operatingBuffer.replace(",", "."),
+          }),
+        },
+      );
+      setInvestableRun(run);
+      setNotice("Kanonik yatırılabilir tutar sürümlü kanıtla hesaplandı.");
+      setError("");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Yatırılabilir tutar hesaplanamadı.",
       );
     }
   }
@@ -391,6 +520,115 @@ export function PlanningWorkspace({
               Öncelik {goal.priority} · Risk {goal.riskLevel} · Ledger posting{" "}
               {goal.ledgerPostingCount}
             </small>
+          </article>
+        ))}
+      </div>
+      <div className="planning-grid">
+        <form className="management-form" onSubmit={addExpected}>
+          <h3>Beklenen ödeme</h3>
+          <label>
+            Beklenen ödeme kaynağı
+            <input
+              value={expectedSource}
+              onChange={(event) => setExpectedSource(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Beklenen ödeme tutarı
+            <input
+              inputMode="decimal"
+              value={expectedAmount}
+              onChange={(event) => setExpectedAmount(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Beklenen ödeme tarihi
+            <input
+              type="date"
+              value={expectedDate}
+              onChange={(event) => setExpectedDate(event.target.value)}
+              required
+            />
+          </label>
+          <button className="primary-button" type="submit">
+            Beklenen ödemeyi ekle
+          </button>
+        </form>
+        <form className="management-form" onSubmit={calculateInvestable}>
+          <h3>Yatırılabilir tutar</h3>
+          <label>
+            İşletme tamponu
+            <input
+              inputMode="decimal"
+              value={operatingBuffer}
+              onChange={(event) => setOperatingBuffer(event.target.value)}
+              required
+            />
+          </label>
+          <button className="primary-button" type="submit">
+            Kanonik tutarı hesapla
+          </button>
+          {investableRun && (
+            <div data-testid="investable-evidence">
+              <strong>
+                {display(investableRun.canonicalInvestableAmount)}
+              </strong>
+              <small>
+                {investableRun.formulaVersion} · {investableRun.policyVersion}
+              </small>
+              <span>
+                Beklenen hariç {display(investableRun.excludedExpectedAmount)} ·
+                Şüpheli alacak hariç{" "}
+                {display(investableRun.excludedDoubtfulReceivableAmount)}
+              </span>
+            </div>
+          )}
+        </form>
+      </div>
+      <div className="planning-grid" data-testid="expected-payments">
+        <label>
+          Gerçekleşme hesabı
+          <select
+            value={expectedAccount}
+            onChange={(event) => setExpectedAccount(event.target.value)}
+          >
+            <option value="">Seç</option>
+            {accounts
+              .filter(
+                (account) =>
+                  account.status === "active" &&
+                  (account.accountType === "bank" ||
+                    account.accountType === "cash"),
+              )
+              .map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+          </select>
+        </label>
+        {expectedPayments.map((payment) => (
+          <article key={payment.id}>
+            <strong>{payment.source}</strong>
+            <span>
+              {display(payment.expectedAmount)} · {payment.status}
+            </span>
+            <small>
+              Gelir {payment.accountingEffect.beforeRealizationIncome} · net
+              servet {payment.accountingEffect.beforeRealizationNetWorth} ·
+              yatırım {payment.accountingEffect.beforeRealizationInvestable}
+            </small>
+            {(payment.status === "expected" ||
+              payment.status === "overdue") && (
+              <button
+                type="button"
+                onClick={() => void realizeExpected(payment)}
+              >
+                Gelir olarak gerçekleştir
+              </button>
+            )}
           </article>
         ))}
       </div>

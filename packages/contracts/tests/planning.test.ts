@@ -3,6 +3,9 @@ import {
   budgetPutSchema,
   goalAllocationCreateSchema,
   goalCreateSchema,
+  expectedPaymentCreateSchema,
+  expectedPaymentRealizeSchema,
+  investableRunCreateSchema,
 } from "../src/planning.js";
 
 const id = "01980f42-0000-7000-8000-000000000001";
@@ -26,6 +29,32 @@ describe("P0-B1 planning contracts", () => {
     ).toBe("15000.0000");
   });
 
+  test("accepts expected-payment realization and canonical-run commands", () => {
+    expect(
+      expectedPaymentCreateSchema.parse({
+        source: "Sentetik ödeme",
+        expectedAmount: "5000.0000",
+        expectedDate: "2026-08-10",
+        certaintyLevel: "likely",
+      }).expectedAmount,
+    ).toBe("5000.0000");
+    expect(
+      expectedPaymentRealizeSchema.parse({
+        targetAccountId: id,
+        targetKind: "bank",
+        currency: "TRY",
+        occurredAt: "2026-08-10T09:00:00.000Z",
+        economicDate: "2026-08-10",
+      }).targetKind,
+    ).toBe("bank");
+    expect(
+      investableRunCreateSchema.parse({
+        asOf: "2026-08-10",
+        operatingBufferAmount: "2000.0000",
+      }).operatingBufferAmount,
+    ).toBe("2000.0000");
+  });
+
   test("rejects duplicate categories, float numbers, and owner injection", () => {
     expect(() =>
       budgetPutSchema.parse({
@@ -33,6 +62,15 @@ describe("P0-B1 planning contracts", () => {
           { categoryId: id, plannedAmount: "10.0000" },
           { categoryId: id, plannedAmount: "20.0000" },
         ],
+      }),
+    ).toThrow();
+    expect(() =>
+      expectedPaymentCreateSchema.parse({
+        userId: id,
+        source: "Sızma",
+        expectedAmount: 10.1,
+        expectedDate: "2026-08-10",
+        certaintyLevel: "certain",
       }),
     ).toThrow();
     expect(() =>

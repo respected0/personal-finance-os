@@ -108,3 +108,89 @@ Goal:
         remainingAmount: { $ref: "#/PlanningMoney" }
         ledgerPostingCount: { const: 0 }
         allocations: { type: array, items: { $ref: "#/GoalAllocation" } }
+ExpectedPaymentCreate:
+  type: object
+  additionalProperties: false
+  required: [source, expectedAmount, expectedDate, certaintyLevel]
+  properties:
+    source: { type: string, minLength: 1, maxLength: 120 }
+    expectedAmount: { $ref: "#/PlanningMoney" }
+    expectedDate: { $ref: "#/PlanningDate" }
+    certaintyLevel: { enum: [certain, likely, uncertain] }
+ExpectedPayment:
+  allOf:
+    - { $ref: "#/ExpectedPaymentCreate" }
+    - type: object
+      required:
+        [id, status, realizedTransactionId, rowVersion, accountingEffect]
+      properties:
+        id: { $ref: "#/PlanningUuid" }
+        status: { enum: [expected, overdue, received, cancelled] }
+        realizedTransactionId:
+          oneOf: [{ $ref: "#/PlanningUuid" }, { type: "null" }]
+        rowVersion: { type: integer, minimum: 1 }
+        accountingEffect:
+          type: object
+          additionalProperties: false
+          required:
+            [
+              beforeRealizationIncome,
+              beforeRealizationNetWorth,
+              beforeRealizationInvestable,
+            ]
+          properties:
+            beforeRealizationIncome: { const: "0.0000" }
+            beforeRealizationNetWorth: { const: "0.0000" }
+            beforeRealizationInvestable: { const: "0.0000" }
+ExpectedPaymentRealize:
+  type: object
+  additionalProperties: false
+  required: [targetAccountId, targetKind, currency, occurredAt, economicDate]
+  properties:
+    targetAccountId: { $ref: "#/PlanningUuid" }
+    targetKind: { enum: [bank, cash] }
+    currency: { const: TRY }
+    occurredAt: { type: string, format: date-time }
+    economicDate: { $ref: "#/PlanningDate" }
+InvestableRunCreate:
+  type: object
+  additionalProperties: false
+  required: [asOf, operatingBufferAmount]
+  properties:
+    asOf: { $ref: "#/PlanningDate" }
+    operatingBufferAmount: { $ref: "#/PlanningMoney" }
+InvestableRun:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      asOf,
+      sourceWatermark,
+      formulaVersion,
+      policyVersion,
+      liquidVerifiedAmount,
+      committedOutflowAmount,
+      operatingBufferAmount,
+      nearTermGoalReserveAmount,
+      excludedExpectedAmount,
+      excludedDoubtfulReceivableAmount,
+      canonicalInvestableAmount,
+      evidence,
+      createdAt,
+    ]
+  properties:
+    id: { $ref: "#/PlanningUuid" }
+    asOf: { $ref: "#/PlanningDate" }
+    sourceWatermark: { type: string, format: date-time }
+    formulaVersion: { const: investable-formula-1.0.0 }
+    policyVersion: { const: planning-policy-1.0.0 }
+    liquidVerifiedAmount: { $ref: "#/PlanningMoney" }
+    committedOutflowAmount: { $ref: "#/PlanningMoney" }
+    operatingBufferAmount: { $ref: "#/PlanningMoney" }
+    nearTermGoalReserveAmount: { $ref: "#/PlanningMoney" }
+    excludedExpectedAmount: { $ref: "#/PlanningMoney" }
+    excludedDoubtfulReceivableAmount: { $ref: "#/PlanningMoney" }
+    canonicalInvestableAmount: { $ref: "#/PlanningMoney" }
+    evidence: { type: object, additionalProperties: true }
+    createdAt: { type: string, format: date-time }
