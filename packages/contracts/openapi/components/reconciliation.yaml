@@ -1,0 +1,165 @@
+ReconciliationUuid:
+  type: string
+  format: uuid
+
+ReconciliationDate:
+  type: string
+  format: date
+
+ReconciliationDateTime:
+  type: string
+  format: date-time
+
+ReconciliationMoneyString:
+  type: string
+  pattern: "^-?(?:0|[1-9][0-9]{0,14})\\.[0-9]{1,4}$"
+
+BalanceSnapshotCreate:
+  type: object
+  additionalProperties: false
+  required: [observedAt, statedBalance]
+  properties:
+    observedAt: { $ref: "#/ReconciliationDateTime" }
+    statedBalance: { $ref: "#/ReconciliationMoneyString" }
+
+BalanceSnapshot:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      accountId,
+      observedAt,
+      statedBalance,
+      calculatedBalance,
+      difference,
+      status,
+    ]
+  properties:
+    id: { $ref: "#/ReconciliationUuid" }
+    accountId: { $ref: "#/ReconciliationUuid" }
+    observedAt: { $ref: "#/ReconciliationDateTime" }
+    statedBalance: { $ref: "#/ReconciliationMoneyString" }
+    calculatedBalance: { $ref: "#/ReconciliationMoneyString" }
+    difference: { $ref: "#/ReconciliationMoneyString" }
+    status: { enum: [open, resolved, ignored] }
+
+ReconciliationCreate:
+  type: object
+  additionalProperties: false
+  required: [accountId, periodStart, periodEnd, snapshotIds]
+  properties:
+    accountId: { $ref: "#/ReconciliationUuid" }
+    periodStart: { $ref: "#/ReconciliationDate" }
+    periodEnd: { $ref: "#/ReconciliationDate" }
+    snapshotIds:
+      type: array
+      minItems: 1
+      maxItems: 366
+      uniqueItems: true
+      items: { $ref: "#/ReconciliationUuid" }
+
+ReconciliationItem:
+  type: object
+  additionalProperties: false
+  required: [id, snapshot, resolutionType, transactionId, resolvedAt]
+  properties:
+    id: { $ref: "#/ReconciliationUuid" }
+    snapshot: { $ref: "#/BalanceSnapshot" }
+    resolutionType:
+      oneOf:
+        - { enum: [missing_transaction, adjustment, accepted] }
+        - { type: "null" }
+    transactionId:
+      oneOf:
+        - { $ref: "#/ReconciliationUuid" }
+        - { type: "null" }
+    resolvedAt:
+      oneOf:
+        - { $ref: "#/ReconciliationDateTime" }
+        - { type: "null" }
+
+ReconciliationSession:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      accountId,
+      periodStart,
+      periodEnd,
+      status,
+      unresolvedCount,
+      startedAt,
+      completedAt,
+      items,
+    ]
+  properties:
+    id: { $ref: "#/ReconciliationUuid" }
+    accountId: { $ref: "#/ReconciliationUuid" }
+    periodStart: { $ref: "#/ReconciliationDate" }
+    periodEnd: { $ref: "#/ReconciliationDate" }
+    status: { enum: [open, resolved] }
+    unresolvedCount: { type: integer, minimum: 0 }
+    startedAt: { $ref: "#/ReconciliationDateTime" }
+    completedAt:
+      oneOf:
+        - { $ref: "#/ReconciliationDateTime" }
+        - { type: "null" }
+    items:
+      type: array
+      items: { $ref: "#/ReconciliationItem" }
+
+AcceptedResolution:
+  type: object
+  additionalProperties: false
+  required: [itemId, resolutionType, reason]
+  properties:
+    itemId: { $ref: "#/ReconciliationUuid" }
+    resolutionType: { const: accepted }
+    reason: { type: string, minLength: 1, maxLength: 500 }
+
+AdjustmentResolution:
+  type: object
+  additionalProperties: false
+  required: [itemId, resolutionType, reason]
+  properties:
+    itemId: { $ref: "#/ReconciliationUuid" }
+    resolutionType: { const: adjustment }
+    reason: { type: string, minLength: 1, maxLength: 500 }
+    fxRate: { $ref: "./ledger.yaml#/PositiveDecimalString" }
+
+MissingTransactionResolution:
+  type: object
+  additionalProperties: false
+  required: [itemId, resolutionType, reason, command]
+  properties:
+    itemId: { $ref: "#/ReconciliationUuid" }
+    resolutionType: { const: missing_transaction }
+    reason: { type: string, minLength: 1, maxLength: 500 }
+    command:
+      oneOf:
+        - { $ref: "./ledger.yaml#/ExpenseCommand" }
+        - { $ref: "./ledger.yaml#/IncomeCommand" }
+        - { $ref: "./ledger.yaml#/TransferCommand" }
+      discriminator:
+        propertyName: type
+
+ReconciliationResolution:
+  oneOf:
+    - { $ref: "#/AcceptedResolution" }
+    - { $ref: "#/AdjustmentResolution" }
+    - { $ref: "#/MissingTransactionResolution" }
+  discriminator:
+    propertyName: resolutionType
+
+ReconciliationResolutionResponse:
+  type: object
+  additionalProperties: false
+  required: [session, transaction]
+  properties:
+    session: { $ref: "#/ReconciliationSession" }
+    transaction:
+      oneOf:
+        - { $ref: "./ledger.yaml#/TransactionCommitResponse" }
+        - { type: "null" }

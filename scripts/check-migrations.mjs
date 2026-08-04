@@ -16,6 +16,8 @@ const dailyCoreMigrationName = "20260801212000_p0_a1_daily_core.sql";
 const cardFlowsMigrationName = "20260801231500_p0_a2_card_flows.sql";
 const subscriptionMigrationName = "20260801234500_p0_a2_subscriptions.sql";
 const sharingMigrationName = "20260803000000_p0_a2_sharing_receivables.sql";
+const reconciliationMigrationName =
+  "20260804130000_p0_a3_reconciliation_reversal.sql";
 
 async function read(relativePath) {
   return readFile(path.join(rootDirectory, relativePath), "utf8");
@@ -51,6 +53,11 @@ if (!migrationFiles.includes(subscriptionMigrationName)) {
 }
 if (!migrationFiles.includes(sharingMigrationName)) {
   errors.push(`Eksik P0-A2 sharing migration: ${sharingMigrationName}.`);
+}
+if (!migrationFiles.includes(reconciliationMigrationName)) {
+  errors.push(
+    `Eksik P0-A3 reconciliation migration: ${reconciliationMigrationName}.`,
+  );
 }
 
 const versions = new Set();
@@ -323,6 +330,54 @@ for (const [pattern, message] of [
   ],
 ]) {
   if (!pattern.test(sharingMigration)) errors.push(message);
+}
+
+const reconciliationMigration = await read(
+  `supabase/migrations/${reconciliationMigrationName}`,
+);
+for (const [pattern, message] of [
+  [
+    /create\s+table\s+app_private\.balance_snapshots/i,
+    "B051 balance_snapshots tablosu eksik.",
+  ],
+  [
+    /difference\s+numeric\s*\(19\s*,\s*4\)[\s\S]*generated\s+always\s+as\s*\(stated_balance\s*-\s*calculated_balance\)\s+stored/i,
+    "B051 stated-calculated generated exact difference eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.reconciliation_sessions/i,
+    "B051 reconciliation_sessions tablosu eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.reconciliation_items/i,
+    "B052 reconciliation_items tablosu eksik.",
+  ],
+  [
+    /resolution_type\s+text[\s\S]*missing_transaction[\s\S]*adjustment[\s\S]*accepted/i,
+    "B052 bağlayıcı çözüm türleri eksik.",
+  ],
+  [
+    /create\s+constraint\s+trigger\s+reconciliation_items_deferred_invariants/i,
+    "B052 deferred reconciliation invariant eksik.",
+  ],
+  [
+    /create\s+constraint\s+trigger\s+transactions_deferred_revision/i,
+    "B053 exact reversal deferred invariant eksik.",
+  ],
+  [
+    /revision\s+does\s+not\s+exactly\s+reverse\s+the\s+original\s+postings/i,
+    "B053 exact original posting reversal kontrolü eksik.",
+  ],
+  [
+    /alter\s+table\s+app_private\.reconciliation_items\s+force\s+row\s+level\s+security/i,
+    "B051/B052 forced RLS açık değil.",
+  ],
+  [
+    /set\s+search_path\s*=\s*pg_catalog\s*,\s*app_private/i,
+    "B051-B053 trigger fonksiyonları sabit search_path kullanmıyor.",
+  ],
+]) {
+  if (!pattern.test(reconciliationMigration)) errors.push(message);
 }
 
 const ledgerKernelMigration = await read(

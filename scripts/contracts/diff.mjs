@@ -26,6 +26,7 @@ const contractFiles = [
   "packages/contracts/openapi/components/cards.yaml",
   "packages/contracts/openapi/components/subscriptions.yaml",
   "packages/contracts/openapi/components/sharing.yaml",
+  "packages/contracts/openapi/components/reconciliation.yaml",
 ];
 let selectedBase;
 let baseRoot;

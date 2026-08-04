@@ -29,6 +29,10 @@ const bytea = customType<{ data: Uint8Array }>({
   dataType: () => "bytea",
 });
 
+const dateRange = customType<{ data: string }>({
+  dataType: () => "daterange",
+});
+
 export const appPrivate = pgSchema("app_private");
 export const appIdentity = pgSchema("app_identity");
 
@@ -956,6 +960,170 @@ export const settlements = appPrivate.table(
       columns: [table.userId, table.obligationId],
       foreignColumns: [obligations.userId, obligations.id],
       name: "settlements_obligation_fk",
+    }),
+  ],
+);
+
+export const balanceSnapshots = appPrivate.table(
+  "balance_snapshots",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    accountId: uuid("account_id").notNull(),
+    observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
+    statedBalance: numeric("stated_balance", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    calculatedBalance: numeric("calculated_balance", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    difference: numeric({ precision: 19, scale: 4 }).generatedAlwaysAs(
+      sql`${sql.identifier("stated_balance")} - ${sql.identifier("calculated_balance")}`,
+    ),
+    status: text().notNull().default("open"),
+    noteEnc: bytea("note_enc"),
+    noteKeyId: text("note_key_id"),
+    noteAlgorithm: text("note_algorithm"),
+    noteEncVersion: smallint("note_enc_version"),
+    noteNonce: bytea("note_nonce"),
+    noteAuthTag: bytea("note_auth_tag"),
+    noteAadVersion: smallint("note_aad_version"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("balance_snapshots_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("balance_snapshots_user_account_observed_unique").on(
+      table.userId,
+      table.accountId,
+      table.observedAt,
+    ),
+    index("balance_snapshots_user_account_observed_idx").on(
+      table.userId,
+      table.accountId,
+      table.observedAt,
+      table.id,
+    ),
+    index("balance_snapshots_user_status_idx").on(
+      table.userId,
+      table.status,
+      table.observedAt,
+      table.id,
+    ),
+    foreignKey({
+      columns: [table.userId, table.accountId],
+      foreignColumns: [financialAccounts.userId, financialAccounts.id],
+      name: "balance_snapshots_account_fk",
+    }),
+  ],
+);
+
+export const reconciliationSessions = appPrivate.table(
+  "reconciliation_sessions",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    accountId: uuid("account_id").notNull(),
+    period: dateRange().notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    status: text().notNull().default("open"),
+    unresolvedCount: integer("unresolved_count").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("reconciliation_sessions_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    index("reconciliation_sessions_user_status_idx").on(
+      table.userId,
+      table.status,
+      table.startedAt,
+      table.id,
+    ),
+    foreignKey({
+      columns: [table.userId, table.accountId],
+      foreignColumns: [financialAccounts.userId, financialAccounts.id],
+      name: "reconciliation_sessions_account_fk",
+    }),
+  ],
+);
+
+export const reconciliationItems = appPrivate.table(
+  "reconciliation_items",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    sessionId: uuid("session_id").notNull(),
+    snapshotId: uuid("snapshot_id").notNull(),
+    resolutionType: text("resolution_type"),
+    transactionId: uuid("transaction_id"),
+    reasonEnc: bytea("reason_enc"),
+    reasonKeyId: text("reason_key_id"),
+    reasonAlgorithm: text("reason_algorithm"),
+    reasonEncVersion: smallint("reason_enc_version"),
+    reasonNonce: bytea("reason_nonce"),
+    reasonAuthTag: bytea("reason_auth_tag"),
+    reasonAadVersion: smallint("reason_aad_version"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("reconciliation_items_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    uniqueIndex("reconciliation_items_user_session_snapshot_unique").on(
+      table.userId,
+      table.sessionId,
+      table.snapshotId,
+    ),
+    index("reconciliation_items_user_session_idx").on(
+      table.userId,
+      table.sessionId,
+      table.resolvedAt,
+      table.id,
+    ),
+    index("reconciliation_items_user_transaction_idx").on(
+      table.userId,
+      table.transactionId,
+    ),
+    foreignKey({
+      columns: [table.userId, table.sessionId],
+      foreignColumns: [
+        reconciliationSessions.userId,
+        reconciliationSessions.id,
+      ],
+      name: "reconciliation_items_session_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.snapshotId],
+      foreignColumns: [balanceSnapshots.userId, balanceSnapshots.id],
+      name: "reconciliation_items_snapshot_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.transactionId],
+      foreignColumns: [transactions.userId, transactions.id],
+      name: "reconciliation_items_transaction_fk",
     }),
   ],
 );

@@ -19,6 +19,7 @@ import { useForm } from "react-hook-form";
 import { CardWorkspace } from "./card-workspace";
 import { SubscriptionWorkspace } from "./subscription-workspace";
 import { ReceivablesWorkspace } from "./receivables-workspace";
+import { ReconciliationWorkspace } from "./reconciliation-workspace";
 
 interface AccountBalance {
   accountId: string;
@@ -719,6 +720,12 @@ export function DailyCoreApp() {
       />
 
       <ReceivablesWorkspace accounts={accounts} onCommitted={loadData} />
+
+      <ReconciliationWorkspace
+        accounts={accounts}
+        categories={categories}
+        onCommitted={loadData}
+      />
 
       {setupOpen && (
         <section className="panel setup-panel" aria-labelledby="setup-title">

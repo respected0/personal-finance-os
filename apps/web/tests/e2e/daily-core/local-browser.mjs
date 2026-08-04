@@ -468,6 +468,29 @@ async function runDesktop(cookie, fixture) {
     .fill("23,34");
   await firstReceivable.getByRole("button", { name: "Tahsil et" }).click();
   await expect(receivablesWorkspace.getByRole("alert")).toBeVisible();
+
+  const reconciliationWorkspace = page.locator(".reconciliation-workspace");
+  const snapshotForm = reconciliationWorkspace.locator("form").filter({
+    has: page.getByRole("heading", { name: "Bakiye karşılaştır" }),
+  });
+  await snapshotForm.getByLabel("Hesap").selectOption(fixture.bankAccountId);
+  await snapshotForm.getByLabel("Belirtilen bakiye").fill("19.000,00");
+  await snapshotForm.getByRole("button", { name: "Farkı hesapla" }).click();
+  await expect(snapshotForm.locator(".reconciliation-result")).toContainText(
+    "Fark:",
+  );
+  await snapshotForm.getByRole("button", { name: "Mutabakat başlat" }).click();
+  const resolutionForm = reconciliationWorkspace.locator("form").filter({
+    has: page.getByRole("heading", { name: "Farkı çöz" }),
+  });
+  await resolutionForm.getByLabel("Çözüm").selectOption("accepted");
+  await resolutionForm
+    .getByLabel("Zorunlu gerekçe")
+    .fill("Sentetik tarayıcı ekstresi kabulü");
+  await resolutionForm.getByRole("button", { name: "Çözümü kaydet" }).click();
+  await expect(reconciliationWorkspace.getByRole("status")).toContainText(
+    "Mutabakat gerekçesi",
+  );
   await expect(firstReceivable).toContainText("Kalan 23,33 TRY");
 
   await page
@@ -648,6 +671,7 @@ try {
   console.log(
     "P0-A2 UAT-06/07 shared expense and partial settlement browser evidence: PASS",
   );
+  console.log("P0-A3 UAT-12 reconciliation desktop browser evidence: PASS");
 } finally {
   await browser?.close();
   if (webProcess && webProcess.exitCode === null) {
