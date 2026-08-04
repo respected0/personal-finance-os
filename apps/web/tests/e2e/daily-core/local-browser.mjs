@@ -398,6 +398,78 @@ async function runDesktop(cookie, fixture) {
     page.locator(".account-row").filter({ hasText: "Sentetik Tarayıcı Nakit" }),
   ).toContainText("1.000,00 TRY");
 
+  const receivablesWorkspace = page.locator(".receivables-workspace");
+  const personForm = receivablesWorkspace
+    .locator("form")
+    .filter({ has: page.getByRole("heading", { name: "Kişi ekle" }) });
+  for (const personName of [
+    "Sentetik Ortak Kişi Bir",
+    "Sentetik Ortak Kişi İki",
+  ]) {
+    await personForm.getByLabel("Ad").fill(personName);
+    await personForm.getByRole("button", { name: "Kişiyi kaydet" }).click();
+    await expect(receivablesWorkspace.getByRole("status")).toContainText(
+      "şifreli ad",
+    );
+  }
+  const sharedForm = receivablesWorkspace
+    .locator("form")
+    .filter({ has: page.getByRole("heading", { name: "Ortak harcama" }) });
+  await sharedForm
+    .getByLabel("Ödeme hesabı")
+    .selectOption(fixture.bankAccountId);
+  await sharedForm.getByLabel("Toplam").fill("100,00");
+  await sharedForm.getByLabel("Sahip payı").fill("33,33");
+  await sharedForm.getByLabel("Yuvarlama").fill("0,01");
+  await sharedForm.getByRole("button", { name: "+ Kişi payı" }).click();
+  await sharedForm.getByRole("button", { name: "+ Kişi payı" }).click();
+  await sharedForm
+    .getByLabel("Kişi 1")
+    .selectOption({ label: "Sentetik Ortak Kişi Bir" });
+  await sharedForm.getByLabel("Pay 1").fill("33,33");
+  await sharedForm
+    .getByLabel("Kişi 2")
+    .selectOption({ label: "Sentetik Ortak Kişi İki" });
+  await sharedForm.getByLabel("Pay 2").fill("33,33");
+  await sharedForm.getByRole("button", { name: "Etkiyi göster" }).click();
+  await expect(sharedForm.getByTestId("shared-effect-summary")).toContainText(
+    "Kişisel gider 33,34 TRY",
+  );
+  await sharedForm
+    .getByRole("button", { name: "Ortak harcamayı kaydet" })
+    .click();
+  await expect(receivablesWorkspace.getByRole("status")).toContainText(
+    "Tek ödeme",
+  );
+  const receivableRows = page
+    .getByTestId("receivable-list")
+    .locator(".receivable-row");
+  await expect(receivableRows).toHaveCount(2);
+  await expect(receivableRows.first()).toContainText("Nominal 33,33 TRY");
+  await expect(page.getByTestId("period-expense")).toHaveText("1.213,44 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("18.719,90 TRY");
+  await receivablesWorkspace
+    .getByLabel("Tahsilat hesabı")
+    .selectOption(fixture.bankAccountId);
+  const firstReceivable = receivableRows.filter({
+    hasText: "Sentetik Ortak Kişi Bir",
+  });
+  await firstReceivable
+    .getByLabel("Sentetik Ortak Kişi Bir tahsilat tutarı")
+    .fill("10,00");
+  await firstReceivable.getByRole("button", { name: "Tahsil et" }).click();
+  await expect(receivablesWorkspace.getByRole("status")).toContainText(
+    "normal gelir 0",
+  );
+  await expect(firstReceivable).toContainText("Kalan 23,33 TRY");
+  await expect(page.getByTestId("period-income")).toHaveText("0,00 TRY");
+  await firstReceivable
+    .getByLabel("Sentetik Ortak Kişi Bir tahsilat tutarı")
+    .fill("23,34");
+  await firstReceivable.getByRole("button", { name: "Tahsil et" }).click();
+  await expect(receivablesWorkspace.getByRole("alert")).toBeVisible();
+  await expect(firstReceivable).toContainText("Kalan 23,33 TRY");
+
   await page
     .locator("#history-account-filter")
     .selectOption(fixture.bankAccountId);
@@ -419,7 +491,7 @@ async function runDesktop(cookie, fixture) {
   await expect(page.getByTestId("history-aggregate")).toContainText(
     "Gider 427,50 TRY",
   );
-  await expect(page.getByTestId("period-expense")).toHaveText("1.180,10 TRY");
+  await expect(page.getByTestId("period-expense")).toHaveText("1.213,44 TRY");
 
   await context.close();
 }
@@ -431,7 +503,7 @@ async function runMobile(cookie, fixture) {
   await context.addCookies(browserCookies(cookie));
   const page = await context.newPage();
   await page.goto(webUrl);
-  await expect(page.getByTestId("net-worth")).toHaveText("18.819,90 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("18.729,90 TRY");
   const noInitialOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth <= window.innerWidth,
   );
@@ -449,7 +521,7 @@ async function runMobile(cookie, fixture) {
   await page.getByLabel("Kaynak hesap").selectOption(fixture.bankAccountId);
   await page.locator("#entry-category").selectOption(fixture.expenseCategoryId);
   const effect = page.getByTestId("effect-summary");
-  await expect(effect).toContainText("18.457,66 TRY");
+  await expect(effect).toContainText("18.367,66 TRY");
   await expect(effect).toContainText("Gider etkisi12,34 TRY");
   assert(
     Date.now() - startedAt < 20_000,
@@ -468,7 +540,7 @@ async function runMobile(cookie, fixture) {
   assert(noEntryOverflow, "390×844 işlem görünümünde yatay taşma var.");
   await page.getByRole("button", { name: "İşlemi kaydet" }).click();
   await expect(page.getByRole("status")).toContainText("Gider kaydedildi.");
-  await expect(page.getByTestId("net-worth")).toHaveText("18.807,56 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("18.717,56 TRY");
   await context.close();
 }
 
@@ -572,6 +644,9 @@ try {
   console.log("P0-A2 UAT-03/04 card expense/payment browser evidence: PASS");
   console.log(
     "P0-A2 UAT-05 subscription/cashback linked browser evidence: PASS",
+  );
+  console.log(
+    "P0-A2 UAT-06/07 shared expense and partial settlement browser evidence: PASS",
   );
 } finally {
   await browser?.close();

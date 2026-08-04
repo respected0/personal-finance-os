@@ -4,12 +4,15 @@
 - Tamamlanan ana aşamalar: M0 B001–B010; P0-A0 B011–B024; P0-A1 B025–B036;
   P0-A2 B037–B043. Son main SHA:
   `a53bd226c0857587a0fddbd350d9cf564e2c51f5`.
-- Kısmen tamamlanan görev: P0-A2 B044–B048. Branch
-  `feat/p0-a2-sharing-receivables`; açık PR #14'te quality/security işleri PASS,
-  database/migration-smoke iki deferred-trigger ve stale settlement preflight
-  düzeltmesinin yeniden CI doğrulamasını bekliyor.
-- Açık PR/CI: [#14](https://github.com/respected0/personal-finance-os/pull/14) açık;
-  PR #13 main’e 10/10 CI ile merge edildi.
+- Tamamlanan görev: P0-A2 B044–B048, [PR #14](https://github.com/respected0/personal-finance-os/pull/14)
+  10/10 CI ile `ee1ff91` olarak main'e squash merge edildi.
+- Kısmen tamamlanan görev: P0-A2 B049–B050. Branch
+  `feat/p0-a2-sensitive-flow-ui`; alacak/ortak gider ekranı ve B050 için
+  browser UAT-06/07 genişletmesi eklendi, runtime doğrulama sıradaki iştir.
+- Açık PR/CI: [#15](https://github.com/respected0/personal-finance-os/pull/15) açık;
+  branch head `6a794ad06234ef182f39152d8af108c5c239aef9`. Quality/Database yeni head
+  için planlanırken önceki `f3f2c4e` run'ları çalışıyordu; bir sonraki oturum
+  yeni head SHA için 10/10 CI kanıtını doğrulamalıdır.
 - Commitlenmemiş dosyalar: Beklenmiyor; `git status --short` ile doğrulanmalı. B044–B048
   migration, contract, DB repository, API routes, test ve CI değişiklikleri `ad186e6`
   ve takip eden `81ae743`/`43b2c80` düzeltmelerinde.
@@ -29,10 +32,11 @@
 - Kalan kabul kriterleri: B044 exact toplam; UAT-06, UAT-07, UAT-08; FOR UPDATE /
   SERIALIZABLE concurrency; migration/reset/drift; contract; RLS; secret scan; P0-A2
   B049/B050 ve gate.
-- Doğrudan devam talimatı: Önce `node --version && pnpm --version && docker info`
-  çalıştır. Erişim varsa `pnpm format:check`, `pnpm lint`, `pnpm typecheck`,
-  `pnpm test:unit`, `pnpm check`, `pnpm sharing:integration`, ardından DB reset/checksum/
-  drift ve secret scan. Hataları B044–B048 sınırında en küçük değişiklikle düzelt.
+- Doğrudan devam talimatı: Önce `git status --short --branch`, `gh pr view 15`
+  ve `gh run list --branch feat/p0-a2-sensitive-flow-ui` çalıştır. CI browser
+  akışında hata verirse B049/B050 kapsamında düzelt; 10/10 PASS olmadan merge
+  etme. Ardından UAT-08 görünürlüğü, P0-A2 gate ve B051 kapsamı için bağlayıcı
+  belgeleri yeniden çıkar.
 - Yapılmaması gerekenler: Mevcut değişiklikleri reset/restore/clean ile silme; branch
   değiştirme veya history rewrite yapma; production/remote Supabase kaynağı oluşturma.
 - Oluşturulmayan production kaynakları: Supabase production projesi, Vercel deployment,
