@@ -5,7 +5,10 @@ import {
   positiveDecimalStringSchema,
   uuidSchema,
 } from "./primitives.js";
-import { investmentBuyCommandSchema } from "./transaction-command.js";
+import {
+  investmentBuyCommandSchema,
+  investmentSellCommandSchema,
+} from "./transaction-command.js";
 
 export const investmentInstrumentInputSchema = z
   .object({
@@ -51,15 +54,22 @@ export const marketPriceSchema = z
   })
   .strict();
 
-export const investmentTradePreviewRequestSchema = investmentBuyCommandSchema;
+export const investmentTradeCommandSchema = z.discriminatedUnion("type", [
+  investmentBuyCommandSchema,
+  investmentSellCommandSchema,
+]);
+export const investmentTradePreviewRequestSchema = investmentTradeCommandSchema;
 export const investmentTradeCommitRequestSchema = z
   .object({
-    command: investmentBuyCommandSchema,
+    command: investmentTradeCommandSchema,
     previewHash: z
       .string()
       .regex(/^[a-f0-9]{64}$/)
       .optional(),
   })
+  .strict();
+export const portfolioQuerySchema = z
+  .object({ asOf: isoDateTimeSchema.optional() })
   .strict();
 
 export type MarketPriceCreate = z.infer<typeof marketPriceCreateSchema>;
@@ -70,3 +80,7 @@ export type InvestmentTradePreviewRequest = z.infer<
 export type InvestmentTradeCommitRequest = z.infer<
   typeof investmentTradeCommitRequestSchema
 >;
+export type InvestmentTradeCommand = z.infer<
+  typeof investmentTradeCommandSchema
+>;
+export type PortfolioQuery = z.infer<typeof portfolioQuerySchema>;

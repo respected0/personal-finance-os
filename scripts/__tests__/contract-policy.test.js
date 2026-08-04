@@ -104,6 +104,7 @@ describe("B005/P0-B1 contract boundary", () => {
       "/api/v1/market-prices",
       "/api/v1/investment-trades/preview",
       "/api/v1/investment-trades",
+      "/api/v1/portfolio",
     ]);
     expect(specification).not.toMatch(
       /\/api\/v1\/(investments|ledger)(?:\/|:)/u,
