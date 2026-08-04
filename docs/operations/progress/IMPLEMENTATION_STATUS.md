@@ -11,7 +11,7 @@
 - Güncel çalışma branch'i: `feat/p0-b1-expected-investable`
 - Açık PR: Yok; B068–B072 doğrulaması sonrası açılacak.
 - Son PASS sonuçları: `pnpm check` (118 unit), OpenAPI additive diff, secret/runtime scan, B062–B072 gerçek PostgreSQL, RLS ve lifecycle PASS. Fresh migration ve iki reset checksum `186931110f4d76515e618578556944500b20af651a6ccd3ed9e499af36c99afb`, drift 0. Expected/doubtful dahil edilen tutar 0; canonical 600.0000 sentetik senaryo; exactly-once realization/replay/conflict PASS.
-- Son FAIL komutu ve kök nedeni: Yerel `pnpm daily:browser`, makinede `libnspr4.so` olmadığı için Chromium yüklenemedi; ürün build PASS, aynı browser senaryosu CI Ubuntu runner'ında çalışacak. `contracts:diff` base component listesinde planning eksikliği minimum script düzeltmesiyle kapatıldı.
+- Son FAIL komutu ve kök nedeni: PR #22 ilk head `auth / integration` mobil akışı, desktop UAT-09'un gerçekleştirdiği 5.000 TRY geliri eski net-servet fixture beklentisine eklemiyordu. Ürün davranışı doğruydu; mobil ardışık senaryo beklentileri +5.000 TRY olarak düzeltildi. Yerel browser host `libnspr4.so` eksikliğiyle çalışmıyor.
 - Oluşturulan migration'lar: Öncekilere ek P0-B1 `20260804173000_p0_b1_budget_goals.sql` ve `20260804190000_p0_b1_expected_investable.sql`.
 - Bilinen teknik borç ve uyarılar: Yerel Linux browser `libnspr4.so` eksikliği
   nedeniyle yeni B064/B065/UAT-11 browser akışı GitHub Ubuntu runner’ında

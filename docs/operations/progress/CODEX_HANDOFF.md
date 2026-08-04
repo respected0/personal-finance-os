@@ -9,7 +9,7 @@
 - Commitlenmemiş dosyalar: `git status --short` ile görülen B068–B072 migration,
   planning contract/repository/API/UI/test ve progress dosyaları.
 - Son PASS komutları: `pnpm planning:integration`; `pnpm db:smoke` (fresh, PostgreSQL 17, iki reset checksum `186931110f4d76515e618578556944500b20af651a6ccd3ed9e499af36c99afb`, drift 0); `pnpm rls:integration`; `pnpm data-lifecycle:integration`; `pnpm check` (118 unit); OpenAPI additive diff; secret/runtime scans.
-- Son FAIL ve kök neden: Yerel browser Chromium'u makinede `libnspr4.so` olmadığı için başlatamadı; CI runner kanıtı bekleniyor. `contracts:diff` main planning component'ini base'e taşımıyordu; script listesine eklenerek PASS oldu.
+- Son FAIL ve kök neden: PR #22 ilk head browser işinde desktop expected realization net serveti doğru olarak +5.000 TRY değiştirdi, fakat ardından çalışan mobile fixture eski sabitleri bekledi; ardışık UAT beklentileri düzeltildi. Yerel Chromium `libnspr4.so` olmadığı için başlamıyor.
 - Kalan kabul kriterleri: B068–B072 browser kabulünün CI Ubuntu runner’da PASS olması, tam DB drift/security ve PR merge; B073–B082/G6; B083–B091/G7; PRE-RC.
 - Doğrudan devam talimatı: `pnpm check`; migration/reset/drift/security; commit/push/PR; `gh pr checks --watch` ile 10/10 PASS bekle, merge et. Sonra B073–B082'ye geç.
 - İlk komutlar: `git status --short --branch`; `git diff --check`; `pnpm check`.
