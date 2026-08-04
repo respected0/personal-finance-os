@@ -306,25 +306,6 @@ async function runDesktop(cookie, fixture) {
     page.getByRole("heading", { name: "Bugünün finans görünümü" }),
   ).toBeVisible();
   await expect(page.getByTestId("net-worth")).toHaveText("20.000,00 TRY");
-  const recommendationCard = page.getByTestId("recommendation-card");
-  await expect(recommendationCard).toContainText("R-01 · v1");
-  await expect(recommendationCard).toContainText(
-    "Kanonik tutar: 1.234,5678 TRY",
-  );
-  await expect(recommendationCard).toContainText(
-    "Kullanılan eşik: 1.000,00 TRY",
-  );
-  await expect(recommendationCard).toContainText("Fark: 234,5678 TRY");
-  await expect(recommendationCard).toContainText("Alternatif: 984,4428 TRY");
-  await recommendationCard.getByRole("button", { name: "Sonra" }).click();
-  await expect(page.getByRole("status")).toContainText(
-    "Geri bildirim sürümlü öneriye kaydedildi.",
-  );
-  assert(
-    recommendationFeedback === "later",
-    "UAT-14 feedback action did not preserve the selected bounded cooldown intent.",
-  );
-
   await page.getByRole("button", { name: "+ İşlem", exact: true }).click();
   await page.getByRole("button", { name: "İşlemi kaydet" }).click();
   await expect(page.getByRole("alert")).toContainText(["Tutar gerekli."]);
@@ -734,6 +715,27 @@ async function runDesktop(cookie, fixture) {
     "Gider 427,50 TRY",
   );
   await expect(page.getByTestId("period-expense")).toHaveText("1.213,44 TRY");
+
+  const recommendationCard = page.getByTestId("recommendation-card");
+  await expect(recommendationCard).toContainText("R-01 · v1");
+  await expect(recommendationCard).toContainText(
+    "Kanonik tutar: 1.234,5678 TRY",
+  );
+  await expect(recommendationCard).toContainText(
+    "Kullanılan eşik: 1.000,00 TRY",
+  );
+  await expect(recommendationCard).toContainText("Fark: 234,5678 TRY");
+  await expect(recommendationCard).toContainText("Alternatif: 984,4428 TRY");
+  await recommendationCard.getByRole("button", { name: "Sonra" }).click();
+  await expect(
+    page.getByText("Geri bildirim sürümlü öneriye kaydedildi.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  assert(
+    recommendationFeedback === "later",
+    "UAT-14 feedback action did not preserve the selected bounded cooldown intent.",
+  );
 
   await context.close();
 }
