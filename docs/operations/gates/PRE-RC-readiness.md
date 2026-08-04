@@ -7,11 +7,13 @@
 - Kapsam: B001–B091; M0, P0-A0, P0-A1, P0-A2, P0-A3, P0-B1, P0-B2 ve P0-B3
 - Nihai sonuç: **PRE-RC READY**
 - RC B092–B104: **BAŞLANMADI**
+- Readiness evidence merge: PR #32,
+  `d78248eba5f81b0494084a93c4fcca9f10a77da3`
 
 Denetlenen ürün tabanında `main == origin/main`, çalışma alanı temiz, açık PR
 yok ve remote branch yalnız `main` idi. Bu raporun kanıt PR'ı son ürün
 davranışını değiştirmez; son kanıt merge SHA'sı merge sonrasında ayrıca Git ve
-final görev raporunda kaydedilir.
+final görev raporunda kaydedilmiştir.
 
 ## Backlog ve gate matrisi
 
