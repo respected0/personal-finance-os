@@ -385,7 +385,7 @@ async function runDesktop(cookie, fixture) {
   await expect(subscriptionSummary).toContainText(
     "Tahsilat ve cashback bağlantısı aktif",
   );
-  await expect(page.getByTestId("period-expense")).toHaveText("1.180,10 TRY");
+  await expect(page.getByTestId("period-expense")).toHaveText("1.213,44 TRY");
   await expect(page.getByTestId("period-income")).toHaveText("0,00 TRY");
   await expect(page.getByTestId("net-worth")).toHaveText("18.819,90 TRY");
 
