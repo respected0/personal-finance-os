@@ -340,7 +340,7 @@ export function PlanningWorkspace({
             </select>
           </label>
           <label>
-            Kaynak hesap
+            Tahsis kaynak hesabı
             <select
               value={selectedAccount}
               onChange={(event) => setSelectedAccount(event.target.value)}

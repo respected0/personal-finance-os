@@ -17,10 +17,10 @@
   `3daee384e6459e8e05fc161e3838ca390d47f84387bff475bdb686e25d819b8b`,
   drift 0); `pnpm rls:integration`; `pnpm data-lifecycle:integration`;
   `pnpm check` (115 unit); OpenAPI breaking diff; secret/runtime scans.
-- Son FAIL ve kök neden: İlk local start seed whitelist yeni planning tablolarını
-  reddetti; whitelist yalnız schema-izin ve sıfır-row kontrolleriyle genişletildi.
-  OpenAPI export schemaVersion 18 denemesi breaking bulundu; yeni tablolar
-  arşive eklenirken dış format sürümü 17’de korundu. Güncel head’de FAIL yok.
+- Son FAIL ve kök neden: PR #21 ilk head `auth / integration` job'ında planlama
+  formunun “Kaynak hesap” etiketi mevcut hızlı işlem seçicisini çakıştırdı;
+  “Tahsis kaynak hesabı” olarak ayrıştırıldı. İlk local seed whitelist ve export
+  schemaVersion geliştirme hataları da minimum düzeltmelerle kapatıldı.
 - Kalan kabul kriterleri: B062–B067 browser kabulünün CI Ubuntu runner’da PASS
   olması ve PR merge; B068–B072/G5; B073–B082/G6; B083–B091/G7; PRE-RC.
 - Doğrudan devam talimatı: browser script değişikliği sonrası `pnpm format &&

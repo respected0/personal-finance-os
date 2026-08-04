@@ -17,10 +17,11 @@
   winner PASS. Fresh migration, iki reset, eşit checksum
   `3daee384e6459e8e05fc161e3838ca390d47f84387bff475bdb686e25d819b8b`,
   drift 0. Data lifecycle/export restore, OpenAPI, secret/runtime scans PASS.
-- Son FAIL komutu ve kök nedeni: `pnpm planning:integration` ilk çalışmada seed
-  whitelist yeni tabloları reddetti; güvenli whitelist/sıfır-row kontrolü
-  güncellendi. İlk OpenAPI diff’te export schemaVersion 18 breaking bulundu;
-  archive formatı 17’de tutuldu. Yeniden testler PASS.
+- Son FAIL komutu ve kök nedeni: PR #21 `auth / integration` ilk head'de yeni
+  planlama “Kaynak hesap” etiketiyle mevcut hızlı işlem etiketinin Playwright
+  strict selector'ünü çakıştırdı; etiket “Tahsis kaynak hesabı” olarak
+  ayrıştırıldı. Seed whitelist ve export schemaVersion geliştirme hataları da
+  daha önce minimum düzeltmelerle kapatıldı.
 - Oluşturulan migration'lar: Önceki M0/P0-A migration’larına ek olarak P0-B1
   `20260804173000_p0_b1_budget_goals.sql`.
 - Bilinen teknik borç ve uyarılar: Yerel Linux browser `libnspr4.so` eksikliği

@@ -528,7 +528,7 @@ async function runDesktop(cookie, fixture) {
     .getByLabel("Hedef")
     .selectOption({ label: "Sentetik Acil Durum Hedefi" });
   await allocationForm
-    .getByLabel("Kaynak hesap")
+    .getByLabel("Tahsis kaynak hesabı")
     .selectOption(fixture.bankAccountId);
   await allocationForm.getByLabel("Tahsis değeri").fill("1000,0000");
   await allocationForm.getByRole("button", { name: "Tahsis et" }).click();
