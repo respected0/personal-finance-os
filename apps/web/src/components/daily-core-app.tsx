@@ -20,6 +20,7 @@ import { CardWorkspace } from "./card-workspace";
 import { SubscriptionWorkspace } from "./subscription-workspace";
 import { ReceivablesWorkspace } from "./receivables-workspace";
 import { ReconciliationWorkspace } from "./reconciliation-workspace";
+import { MonthlyReportWorkspace } from "./monthly-report-workspace";
 
 interface AccountBalance {
   accountId: string;
@@ -87,6 +88,14 @@ interface PreviewResult {
     personalExpenseDelta: string;
     normalIncomeDelta: string;
     netWorthDelta: string;
+  };
+}
+
+interface MonthlyDashboardReport {
+  readonly metrics: {
+    readonly income: string;
+    readonly netExpense: string;
+    readonly savings: string;
   };
 }
 
@@ -297,11 +306,6 @@ export function DailyCoreApp() {
     }
     historyQuery.set("limit", "25");
     const month = currentMonthRange();
-    const dashboardQuery = new URLSearchParams({
-      period_from: month.from,
-      period_to: month.to,
-      limit: "5",
-    });
     try {
       const [
         nextAccounts,
@@ -316,15 +320,23 @@ export function DailyCoreApp() {
         jsonRequest<HistoryPage>(
           `/api/v1/transactions?${historyQuery.toString()}`,
         ),
-        jsonRequest<HistoryPage>(
-          `/api/v1/transactions?${dashboardQuery.toString()}`,
+        jsonRequest<MonthlyDashboardReport>(
+          `/api/v1/reports/monthly/${month.from.slice(0, 7)}?version=latest`,
         ),
       ]);
       setAccounts(nextAccounts);
       setInstitutions(nextInstitutions);
       setCategories(nextCategories);
       setHistory(nextHistory);
-      setDashboard(nextDashboard);
+      setDashboard({
+        items: [],
+        nextCursor: null,
+        aggregate: {
+          personalExpense: nextDashboard.metrics.netExpense,
+          normalIncome: nextDashboard.metrics.income,
+          net: nextDashboard.metrics.savings,
+        },
+      });
     } catch (error) {
       setLoadError(
         error instanceof Error ? error.message : "Finans özeti yüklenemedi.",
@@ -725,6 +737,12 @@ export function DailyCoreApp() {
         accounts={accounts}
         categories={categories}
         onCommitted={loadData}
+      />
+
+      <MonthlyReportWorkspace
+        accounts={accounts}
+        categories={categories}
+        refreshToken={`${dashboard.aggregate.normalIncome}:${dashboard.aggregate.personalExpense}:${dashboard.aggregate.net}`}
       />
 
       {setupOpen && (

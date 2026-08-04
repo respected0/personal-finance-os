@@ -18,6 +18,7 @@ const subscriptionMigrationName = "20260801234500_p0_a2_subscriptions.sql";
 const sharingMigrationName = "20260803000000_p0_a2_sharing_receivables.sql";
 const reconciliationMigrationName =
   "20260804130000_p0_a3_reconciliation_reversal.sql";
+const monthlyReportsMigrationName = "20260804143000_p0_a3_monthly_reports.sql";
 
 async function read(relativePath) {
   return readFile(path.join(rootDirectory, relativePath), "utf8");
@@ -57,6 +58,11 @@ if (!migrationFiles.includes(sharingMigrationName)) {
 if (!migrationFiles.includes(reconciliationMigrationName)) {
   errors.push(
     `Eksik P0-A3 reconciliation migration: ${reconciliationMigrationName}.`,
+  );
+}
+if (!migrationFiles.includes(monthlyReportsMigrationName)) {
+  errors.push(
+    `Eksik P0-A3 monthly reports migration: ${monthlyReportsMigrationName}.`,
   );
 }
 
@@ -378,6 +384,42 @@ for (const [pattern, message] of [
   ],
 ]) {
   if (!pattern.test(reconciliationMigration)) errors.push(message);
+}
+
+const monthlyReportsMigration = await read(
+  `supabase/migrations/${monthlyReportsMigrationName}`,
+);
+for (const [pattern, message] of [
+  [
+    /create\s+table\s+app_private\.monthly_report_versions/i,
+    "B056 monthly_report_versions tablosu eksik.",
+  ],
+  [
+    /source_high_watermark\s+timestamptz\s+not\s+null/i,
+    "B056 transaction high-watermark alanı eksik.",
+  ],
+  [
+    /engine_version[\s\S]*rule_version[\s\S]*metrics_json[\s\S]*checksum/i,
+    "B056 engine/rule/metrics/checksum snapshot alanları eksik.",
+  ],
+  [
+    /monthly report snapshot is immutable/i,
+    "B056 immutable version koruması eksik.",
+  ],
+  [
+    /create\s+trigger\s+transactions_stale_monthly_reports/i,
+    "B056 source değişiminde stale invalidation trigger'ı eksik.",
+  ],
+  [
+    /security\s+definer[\s\S]*set\s+search_path\s*=\s*pg_catalog\s*,\s*app_private/i,
+    "B056 stale SECURITY DEFINER fonksiyonu sabit search_path kullanmıyor.",
+  ],
+  [
+    /alter\s+table\s+app_private\.monthly_report_versions\s+force\s+row\s+level\s+security/i,
+    "B056 monthly report forced RLS açık değil.",
+  ],
+]) {
+  if (!pattern.test(monthlyReportsMigration)) errors.push(message);
 }
 
 const ledgerKernelMigration = await read(

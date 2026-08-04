@@ -479,11 +479,74 @@ try {
     "B053 revise API reverse+replacement etkisini üretmedi.",
   );
 
+  const monthlyLive = await api("/api/v1/reports/monthly/2026-08", {
+    cookie: aal2Cookie,
+  });
+  assert(
+    monthlyLive.response.status === 200 &&
+      monthlyLive.payload.source === "live" &&
+      monthlyLive.payload.metrics.grossExpense === "637.5000" &&
+      monthlyLive.payload.metrics.refunds === "527.5000" &&
+      monthlyLive.payload.metrics.netExpense === "110.0000" &&
+      monthlyLive.payload.metrics.savings === "-110.0000",
+    `B054/B055 monthly API exact aggregate failed: ${JSON.stringify(monthlyLive.payload)}.`,
+  );
+  const aal1Version = await api("/api/v1/reports/monthly/2026-08/versions", {
+    cookie: aal1Cookie,
+    method: "POST",
+    body: { reason: "Sentetik AAL1 rapor sürümü" },
+  });
+  assert(
+    aal1Version.response.status === 403 &&
+      aal1Version.payload.code === "mfa_required",
+    "B056 report version AAL1 ile reddedilmedi.",
+  );
+  const reportVersionOne = await api(
+    "/api/v1/reports/monthly/2026-08/versions",
+    {
+      cookie: aal2Cookie,
+      method: "POST",
+      body: { reason: "Sentetik API ay kapanışı" },
+    },
+  );
+  assert(
+    reportVersionOne.response.status === 201 &&
+      reportVersionOne.payload.version === 1 &&
+      reportVersionOne.payload.engineVersion === "monthly-report-1.0.0",
+    "B056 first report version API failed.",
+  );
+  const afterVersionExpense = await api("/api/v1/transactions", {
+    cookie: aal2Cookie,
+    method: "POST",
+    idempotencyKey: randomUUID(),
+    body: { command: { ...expenseCommand, amount: "5.00" } },
+  });
+  assert(
+    afterVersionExpense.response.status === 201,
+    "B056 stale source transaction fixture failed.",
+  );
+  const staleVersionOne = await api(
+    "/api/v1/reports/monthly/2026-08?version=1",
+    { cookie: aal2Cookie },
+  );
+  const newLive = await api("/api/v1/reports/monthly/2026-08?version=latest", {
+    cookie: aal2Cookie,
+  });
+  assert(
+    staleVersionOne.response.status === 200 &&
+      staleVersionOne.payload.staleAt &&
+      staleVersionOne.payload.metrics.netExpense === "110.0000" &&
+      newLive.payload.source === "live" &&
+      newLive.payload.metrics.netExpense === "115.0000",
+    "B056 stale old version / new live API behavior failed.",
+  );
+
   console.log("P0-A1 BFF AAL1 write rejection / AAL2 write: PASS");
   console.log("P0-A1 BFF owner injection / cross-site rejection: PASS");
   console.log("P0-A1 BFF account/opening/preview/commit/history/balance: PASS");
   console.log("P0-A3 B051/B052 snapshot/reconciliation API security: PASS");
   console.log("P0-A3 B053 void/revise API server-owned originals: PASS");
+  console.log("P0-A3 B054-B056 report aggregate/version API: PASS");
 } finally {
   if (webProcess && webProcess.exitCode === null) {
     webProcess.kill("SIGTERM");

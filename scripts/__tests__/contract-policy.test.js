@@ -6,7 +6,7 @@ import {
 } from "../../packages/contracts/src/index.ts";
 
 describe("B005/P0-A3 contract boundary", () => {
-  test("exposes only approved foundation through reconciliation paths", async () => {
+  test("exposes only approved foundation through monthly report paths", async () => {
     const specification = await readFile(
       "packages/contracts/openapi/openapi.yaml",
       "utf8",
@@ -35,6 +35,10 @@ describe("B005/P0-A3 contract boundary", () => {
       "packages/contracts/openapi/components/reconciliation.yaml",
       "utf8",
     );
+    const monthlyReportComponents = await readFile(
+      "packages/contracts/openapi/components/monthly-reports.yaml",
+      "utf8",
+    );
 
     expect(specification).toContain("openapi: 3.1.0");
     expect(specification).toContain("/api/v1/health:");
@@ -58,6 +62,8 @@ describe("B005/P0-A3 contract boundary", () => {
       "/api/v1/accounts/{accountId}/snapshots",
       "/api/v1/reconciliations",
       "/api/v1/reconciliations/{reconciliationId}/resolve",
+      "/api/v1/reports/monthly/{period}",
+      "/api/v1/reports/monthly/{period}/versions",
       "/api/v1/categories",
       "/api/v1/cards",
       "/api/v1/cards/{cardId}/statements",
@@ -72,7 +78,7 @@ describe("B005/P0-A3 contract boundary", () => {
       "/api/v1/receivables/{receivableId}/settlements",
     ]);
     expect(specification).not.toMatch(
-      /\/api\/v1\/(budgets|investments|ledger|reports)/u,
+      /\/api\/v1\/(budgets|investments|ledger)(?:\/|:)/u,
     );
     expect(ledgerComponents).not.toMatch(
       /\b(userId|user_id|originalPostings|outstandingAmount|availableQuantity|costBasis|alreadyRealized)\b/u,
@@ -87,6 +93,9 @@ describe("B005/P0-A3 contract boundary", () => {
     );
     expect(reconciliationComponents).not.toMatch(
       /\b(userId|user_id|reason_enc|note_enc|originalPostings)\b/u,
+    );
+    expect(monthlyReportComponents).not.toMatch(
+      /\b(userId|user_id|generation_reason_enc|generation_reason_key_id)\b/u,
     );
   });
 

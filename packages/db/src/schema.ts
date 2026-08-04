@@ -1127,3 +1127,55 @@ export const reconciliationItems = appPrivate.table(
     }),
   ],
 );
+
+export const monthlyReportVersions = appPrivate.table(
+  "monthly_report_versions",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    period: date().notNull(),
+    version: integer().notNull(),
+    sourceHighWatermark: timestamp("source_high_watermark", {
+      withTimezone: true,
+    }).notNull(),
+    engineVersion: text("engine_version").notNull(),
+    ruleVersion: text("rule_version").notNull(),
+    metricsJson: jsonb("metrics_json").notNull(),
+    checksum: bytea().notNull(),
+    generationReasonEnc: bytea("generation_reason_enc").notNull(),
+    generationReasonKeyId: text("generation_reason_key_id").notNull(),
+    generationReasonAlgorithm: text("generation_reason_algorithm").notNull(),
+    generationReasonEncVersion: smallint(
+      "generation_reason_enc_version",
+    ).notNull(),
+    generationReasonNonce: bytea("generation_reason_nonce").notNull(),
+    generationReasonAuthTag: bytea("generation_reason_auth_tag").notNull(),
+    generationReasonAadVersion: smallint(
+      "generation_reason_aad_version",
+    ).notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    staleAt: timestamp("stale_at", { withTimezone: true }),
+    staleReason: text("stale_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("monthly_report_versions_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    uniqueIndex("monthly_report_versions_user_period_version_unique").on(
+      table.userId,
+      table.period,
+      table.version,
+    ),
+    index("monthly_report_versions_user_period_latest_idx").on(
+      table.userId,
+      table.period,
+      table.version,
+    ),
+  ],
+);

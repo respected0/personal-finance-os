@@ -44,7 +44,8 @@ begin
           'settlements',
           'balance_snapshots',
           'reconciliation_sessions',
-          'reconciliation_items'
+          'reconciliation_items',
+          'monthly_report_versions'
         )
       )
   ) then
@@ -84,6 +85,7 @@ begin
     or exists (select 1 from app_private.balance_snapshots)
     or exists (select 1 from app_private.reconciliation_sessions)
     or exists (select 1 from app_private.reconciliation_items)
+    or exists (select 1 from app_private.monthly_report_versions)
   then
     raise exception 'Seed must not populate P0-A financial or operational rows.';
   end if;
