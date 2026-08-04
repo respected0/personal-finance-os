@@ -6,7 +6,7 @@ info:
   description: >-
     Local and future server contract. P0-A0 exposes typed preview and commit
     boundaries; clients never submit ledger postings or owner identifiers.
-  version: 1.12.0
+  version: 1.13.0
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
@@ -1326,14 +1326,18 @@ paths:
   /api/v1/investment-trades/preview:
     post:
       operationId: previewInvestmentTrade
-      summary: Preview a fee-inclusive investment buy without writing
+      summary: Preview a fee-inclusive investment buy or lot-capped sell without writing
       tags: [Investments]
       x-required-aal: aal2
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "./components/ledger.yaml#/InvestmentBuyCommand" }
+            schema:
+              oneOf:
+                - { $ref: "./components/ledger.yaml#/InvestmentBuyCommand" }
+                - { $ref: "./components/ledger.yaml#/InvestmentSellCommand" }
+              discriminator: { propertyName: type }
       responses:
         "200":
           description: Cash and position posting impact with zero consumption expense
@@ -1345,7 +1349,7 @@ paths:
   /api/v1/investment-trades:
     post:
       operationId: commitInvestmentTrade
-      summary: Commit an investment buy, ledger event and fee-inclusive lot atomically
+      summary: Commit an investment buy/sell, ledger event and lot changes atomically
       tags: [Investments]
       x-required-aal: aal2
       parameters:
@@ -1379,6 +1383,28 @@ paths:
         "409": { $ref: "#/components/responses/ProblemResponse" }
         "422": { $ref: "#/components/responses/ProblemResponse" }
         "503": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/portfolio:
+    get:
+      operationId: getPortfolio
+      summary: Read exact open quantity, cost and as-of market valuation
+      tags: [Investments]
+      x-required-aal: aal1
+      parameters:
+        - name: as_of
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Owned positions with price timestamp/source and missing-price label
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  { $ref: "./components/investment.yaml#/PortfolioPosition" }
+        "401": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
 components:
   securitySchemes:
     cookieAuth:

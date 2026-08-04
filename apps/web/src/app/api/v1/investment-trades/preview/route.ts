@@ -1,5 +1,5 @@
 import { investmentTradePreviewRequestSchema } from "@personal-finance-os/contracts";
-import { previewTransaction } from "@personal-finance-os/domain";
+import { previewInvestmentTrade } from "@personal-finance-os/db";
 import {
   financeJson,
   financeProblem,
@@ -14,7 +14,11 @@ export async function POST(request: Request) {
       investmentTradePreviewRequestSchema,
       await request.json(),
     );
-    return financeJson(previewTransaction(command), 200, runtime.requestId);
+    return financeJson(
+      await previewInvestmentTrade(runtime.sql, runtime.userId, command),
+      200,
+      runtime.requestId,
+    );
   } catch (error) {
     return financeProblem(error, request);
   }

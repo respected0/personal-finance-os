@@ -46,7 +46,11 @@ InvestmentTradeCommitRequest:
   additionalProperties: false
   required: [command]
   properties:
-    command: { $ref: "./ledger.yaml#/InvestmentBuyCommand" }
+    command:
+      oneOf:
+        - { $ref: "./ledger.yaml#/InvestmentBuyCommand" }
+        - { $ref: "./ledger.yaml#/InvestmentSellCommand" }
+      discriminator: { propertyName: type }
     previewHash: { type: string, pattern: "^[a-f0-9]{64}$" }
 
 InvestmentTrade:
@@ -112,3 +116,117 @@ InvestmentTradeCommitResponse:
     effects: { $ref: "./ledger.yaml#/FinancialEffects" }
     trade: { $ref: "#/InvestmentTrade" }
     lot: { $ref: "#/InvestmentLot" }
+    sellTrade: { $ref: "#/InvestmentSellTrade" }
+    consumptions:
+      type: array
+      items: { $ref: "#/InvestmentLotConsumption" }
+
+InvestmentLotConsumption:
+  type: object
+  additionalProperties: false
+  required: [id, lotId, quantity, unitCost]
+  properties:
+    id: { type: string, format: uuid }
+    lotId: { type: string, format: uuid }
+    quantity: { type: string }
+    unitCost: { type: string }
+
+InvestmentSellTrade:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      transactionId,
+      accountId,
+      instrumentId,
+      side,
+      quantity,
+      unitPrice,
+      feeAmount,
+      costBasisIncludingFee,
+    ]
+  properties:
+    id: { type: string, format: uuid }
+    transactionId: { type: string, format: uuid }
+    accountId: { type: string, format: uuid }
+    instrumentId: { type: string, format: uuid }
+    side: { const: sell }
+    quantity: { type: string }
+    unitPrice: { type: string }
+    feeAmount: { type: string }
+    costBasisIncludingFee: { type: string }
+
+InvestmentSellCommitResponse:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      transactionId,
+      replayed,
+      previewHash,
+      engineVersion,
+      postings,
+      effects,
+      trade,
+      consumptions,
+    ]
+  properties:
+    transactionId: { type: string, format: uuid }
+    replayed: { type: boolean }
+    previewHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+    engineVersion: { type: string, const: ledger-1.0.0 }
+    postings:
+      type: array
+      minItems: 2
+      items: { $ref: "./ledger.yaml#/PlannedPosting" }
+    effects: { $ref: "./ledger.yaml#/FinancialEffects" }
+    trade: { $ref: "#/InvestmentSellTrade" }
+    consumptions:
+      type: array
+      minItems: 1
+      items: { $ref: "#/InvestmentLotConsumption" }
+
+PortfolioPosition:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      instrument,
+      quantity,
+      costBasis,
+      averageUnitCost,
+      price,
+      priceAt,
+      sourceType,
+      isEstimated,
+      valuationStatus,
+      marketValue,
+      unrealizedProfitLoss,
+    ]
+  properties:
+    instrument:
+      type: object
+      additionalProperties: false
+      required: [id, symbol, name, instrumentType, unit, currency, active]
+      properties:
+        id: { type: string, format: uuid }
+        symbol: { type: string }
+        name: { type: string }
+        instrumentType: { enum: [fund, stock, bond, bank_gold, crypto, other] }
+        unit: { enum: [unit, gram] }
+        currency: { type: string }
+        active: { type: boolean }
+    quantity: { type: string }
+    costBasis: { type: string }
+    averageUnitCost: { type: string }
+    price: { type: [string, "null"] }
+    priceAt: { type: [string, "null"], format: date-time }
+    sourceType:
+      oneOf:
+        - { enum: [manual, reference_fixture] }
+        - { type: "null" }
+    isEstimated: { type: boolean }
+    valuationStatus: { enum: [priced, missing_price] }
+    marketValue: { type: [string, "null"] }
+    unrealizedProfitLoss: { type: [string, "null"] }

@@ -65,4 +65,17 @@ describe("B074/B075 investment buy contract", () => {
       }),
     ).toThrow();
   });
+  test("accepts an exact sell without client-provided lot cost fields", () => {
+    const parsed = investmentTradeCommitRequestSchema.parse({
+      command: {
+        ...command,
+        type: "investment_sell",
+        quantity: "0.3100000000",
+        unitPrice: "3000.0000000000",
+      },
+    });
+    expect(parsed.command.type).toBe("investment_sell");
+    expect(parsed.command).not.toHaveProperty("availableQuantity");
+    expect(parsed.command).not.toHaveProperty("costBasis");
+  });
 });

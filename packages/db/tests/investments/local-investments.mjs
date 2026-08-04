@@ -1,12 +1,15 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import {
   commitInvestmentBuy,
+  commitInvestmentSell,
   createFinancialAccount,
   createInstitution,
   createLedgerSql,
   createMarketPrice,
+  getPortfolio,
   LedgerReferenceError,
   listLatestMarketPrices,
+  previewInvestmentTrade,
   provisionSystemLedgerAccounts,
 } from "../../dist/index.js";
 import {
@@ -147,6 +150,141 @@ try {
       replayed.lot.id === bought.lot.id,
     "B074 investment idempotency replay created a different aggregate.",
   );
+  const sellCommand = {
+    type: "investment_sell",
+    currency: "TRY",
+    occurredAt: "2026-08-04T14:00:00.000Z",
+    economicDate: "2026-08-04",
+    cashAccountId: bank.id,
+    instrumentId: first.instrument.id,
+    quantity: "0.3100000000",
+    unitPrice: "3000.0000000000",
+    feeAmount: "3.0000",
+  };
+  const sellPreview = await previewInvestmentTrade(sql, userA, sellCommand);
+  assert(
+    sellPreview.primaryAmount === "927.00" &&
+      sellPreview.postings.length === 3 &&
+      sellPreview.postings[0]?.amountOriginal === "927.00" &&
+      sellPreview.postings[1]?.amountOriginal === "893.0631" &&
+      sellPreview.postings[2]?.ledgerRole === "realized_gain" &&
+      sellPreview.postings[2]?.amountOriginal === "33.9369" &&
+      sellPreview.effects.normalIncomeDelta === "0.00" &&
+      sellPreview.effects.personalExpenseDelta === "0.00",
+    "B076 sell preview did not separate proceeds, fee-inclusive cost and realized gain.",
+  );
+  const sellKey = randomUUID();
+  const sold = await commitInvestmentSell(sql, {
+    userId: userA,
+    idempotencyKey: sellKey,
+    requestId: randomUUID(),
+    command: sellCommand,
+    previewHash: sellPreview.previewHash,
+  });
+  assert(
+    sold.sellTrade.side === "sell" &&
+      sold.sellTrade.costBasisIncludingFee === "893.0631" &&
+      sold.consumptions.length === 1 &&
+      sold.consumptions[0]?.quantity === "0.3100000000" &&
+      sold.lot.quantityOpen === "1.0000000000",
+    "B076 FIFO lot consumption or remaining quantity was incorrect.",
+  );
+  const sellReplay = await commitInvestmentSell(sql, {
+    userId: userA,
+    idempotencyKey: sellKey,
+    requestId: randomUUID(),
+    command: sellCommand,
+    previewHash: sellPreview.previewHash,
+  });
+  assert(
+    sellReplay.replayed &&
+      sellReplay.transactionId === sold.transactionId &&
+      sellReplay.sellTrade.id === sold.sellTrade.id &&
+      sellReplay.lot.quantityOpen === "1.0000000000",
+    "B076 sell replay depended on the post-sale lot balance or duplicated state.",
+  );
+  const capCounts = await sql`
+    select (select count(*) from app_private.transactions)::integer transactions,
+      (select count(*) from app_private.investment_trades)::integer trades,
+      (select count(*) from app_private.investment_lot_consumptions)::integer consumptions
+  `;
+  try {
+    await previewInvestmentTrade(sql, userA, {
+      ...sellCommand,
+      quantity: "1.0000000001",
+    });
+    throw new Error("Lot quantity cap unexpectedly allowed an oversell.");
+  } catch (error) {
+    assert(
+      error?.code === "lot_quantity_exceeded",
+      `B076 quantity cap returned unexpected error: ${error?.message}`,
+    );
+  }
+  const capCountsAfter = await sql`
+    select (select count(*) from app_private.transactions)::integer transactions,
+      (select count(*) from app_private.investment_trades)::integer trades,
+      (select count(*) from app_private.investment_lot_consumptions)::integer consumptions
+  `;
+  assert(
+    JSON.stringify(capCounts[0]) === JSON.stringify(capCountsAfter[0]),
+    "B076 oversell left partial ledger, trade or consumption state.",
+  );
+  const missingInstrumentId = randomUUID();
+  await sql`
+    insert into app_private.investment_instruments (
+      id,user_id,symbol,name,instrument_type,unit,currency
+    ) values (
+      ${missingInstrumentId}::uuid,${userA}::uuid,'NOPRICE',
+      'Sentetik fiyatsız fon','fund','unit','TRY'
+    )
+  `;
+  await commitInvestmentBuy(sql, {
+    userId: userA,
+    idempotencyKey: randomUUID(),
+    requestId: randomUUID(),
+    command: {
+      ...buyCommand,
+      instrumentId: missingInstrumentId,
+      quantity: "1.0000000000",
+      unitPrice: "100.0000000000",
+      feeAmount: "0.0000",
+    },
+  });
+  const portfolio = await getPortfolio(sql, {
+    userId: userA,
+    asOf: "2026-08-04T23:59:59.999Z",
+  });
+  const gold = portfolio.find(
+    ({ instrument }) => instrument.id === first.instrument.id,
+  );
+  const missing = portfolio.find(
+    ({ instrument }) => instrument.id === missingInstrumentId,
+  );
+  assert(
+    gold?.quantity === "1.0000000000" &&
+      gold.costBasis === "2880.8486" &&
+      gold.averageUnitCost === "2880.8486259542" &&
+      gold.price === "2900.0000000001" &&
+      gold.marketValue === "2900.0000" &&
+      gold.unrealizedProfitLoss === "19.1514" &&
+      gold.priceAt === "2026-08-04T12:00:00.000Z" &&
+      gold.sourceType === "manual" &&
+      gold.isEstimated,
+    "B077 portfolio quantity/cost/value/P&L or visible price evidence was wrong.",
+  );
+  assert(
+    missing?.price === null &&
+      missing.marketValue === null &&
+      missing.unrealizedProfitLoss === null &&
+      missing.valuationStatus === "missing_price" &&
+      missing.isEstimated,
+    "B077 missing-price position was not explicitly estimated/unvalued.",
+  );
+  assert(
+    (await getPortfolio(sql, { userId: userB, asOf: "2026-08-05T00:00:00Z" }))
+      .length === 0,
+    "B077 portfolio crossed user ownership.",
+  );
   const beforeRejected = await sql`
     select (select count(*) from app_private.transactions)::integer transactions,
       (select count(*) from app_private.investment_trades)::integer trades,
@@ -183,6 +321,12 @@ try {
   );
   console.log(
     "P0-B2 B074/B075 atomic buy, ledger, expense=0, fee-cost lot, idempotency: PASS",
+  );
+  console.log(
+    "P0-B2 B076 sell proceeds/cost/gain, quantity cap, replay and lot consumption: PASS",
+  );
+  console.log(
+    "P0-B2 B077 as-of portfolio quantity/cost/value/P&L/missing-price evidence: PASS",
   );
 } finally {
   await sql.end({ timeout: 5 }).catch(() => undefined);
