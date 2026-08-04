@@ -55,6 +55,10 @@ begin
           'goal_contribution_events',
           'expected_payments',
           'planning_investable_runs',
+          'recommendation_rules',
+          'recommendation_settings',
+          'recommendation_runs',
+          'recommendations',
           'investment_instruments',
           'market_prices',
           'investment_trades',
@@ -110,6 +114,9 @@ begin
     or exists (select 1 from app_private.goal_contribution_events)
     or exists (select 1 from app_private.expected_payments)
     or exists (select 1 from app_private.planning_investable_runs)
+    or exists (select 1 from app_private.recommendation_settings)
+    or exists (select 1 from app_private.recommendation_runs)
+    or exists (select 1 from app_private.recommendations)
     or exists (select 1 from app_private.investment_instruments)
     or exists (select 1 from app_private.market_prices)
     or exists (select 1 from app_private.investment_trades)
@@ -121,11 +128,11 @@ begin
     or exists (select 1 from app_identity.account_deletion_requests)
     or exists (select 1 from app_identity.account_deletion_receipts)
   then
-    raise exception 'Seed must not populate P0-A financial or operational rows.';
+    raise exception 'Seed must not populate product financial or operational rows.';
   end if;
 
   raise notice
-    'P0-B2 seed complete: zero identity, counterparty, account, planning, investment, transaction, posting, audit, outbox, or finance rows.';
+    'P0-B3 seed complete: versioned recommendation rules are migration reference data; zero identity, setting, run, recommendation, account, planning, investment, transaction, posting, audit, outbox, or finance rows.';
 end
 $seed$;
 

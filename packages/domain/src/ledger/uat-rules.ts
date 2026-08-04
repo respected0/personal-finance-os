@@ -84,7 +84,10 @@ export function traceRecommendationRule(
   version: number,
 ): { readonly code: string; readonly version: number } {
   if (
-    !/^[a-z][a-z0-9_]{2,63}$/u.test(code) ||
+    !(
+      /^[a-z][a-z0-9_]{2,63}$/u.test(code) ||
+      /^R-(?:0[1-9]|1[0-5])$/u.test(code)
+    ) ||
     !Number.isSafeInteger(version) ||
     version < 1
   ) {

@@ -20,6 +20,7 @@ const reconciliationMigrationName =
   "20260804130000_p0_a3_reconciliation_reversal.sql";
 const monthlyReportsMigrationName = "20260804143000_p0_a3_monthly_reports.sql";
 const dataLifecycleMigrationName = "20260804160000_p0_a3_data_lifecycle.sql";
+const recommendationMigrationName = "20260805000000_p0_b3_recommendations.sql";
 
 async function read(relativePath) {
   return readFile(path.join(rootDirectory, relativePath), "utf8");
@@ -69,6 +70,11 @@ if (!migrationFiles.includes(monthlyReportsMigrationName)) {
 if (!migrationFiles.includes(dataLifecycleMigrationName)) {
   errors.push(
     `Eksik P0-A3 data lifecycle migration: ${dataLifecycleMigrationName}.`,
+  );
+}
+if (!migrationFiles.includes(recommendationMigrationName)) {
+  errors.push(
+    `Eksik P0-B3 recommendation migration: ${recommendationMigrationName}.`,
   );
 }
 
@@ -426,6 +432,42 @@ for (const [pattern, message] of [
   ],
 ]) {
   if (!pattern.test(monthlyReportsMigration)) errors.push(message);
+}
+
+const recommendationMigration = await read(
+  `supabase/migrations/${recommendationMigrationName}`,
+);
+for (const [pattern, message] of [
+  [
+    /create\s+table\s+app_private\.recommendation_rules/i,
+    "B083 recommendation rule registry eksik.",
+  ],
+  [
+    /generate_series\s*\(1\s*,\s*15\)/i,
+    "B083 R-01–R-15 versioned registry eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.recommendation_settings/i,
+    "B084 effective recommendation settings eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.recommendation_runs/i,
+    "B085 recommendation runs eksik.",
+  ],
+  [
+    /foreign\s+key\s*\(user_id\s*,\s*investable_run_id\)[\s\S]*references\s+app_private\.planning_investable_runs/i,
+    "B085 canonical investable_run composite FK eksik.",
+  ],
+  [
+    /create\s+table\s+app_private\.recommendations\s*\((?=[\s\S]*evidence_json)(?=[\s\S]*used_threshold)(?=[\s\S]*difference_amount)(?=[\s\S]*alternative_amount)/i,
+    "B085 explainability evidence/threshold/difference/alternative alanları eksik.",
+  ],
+  [
+    /alter\s+table\s+app_private\.recommendations\s+force\s+row\s+level\s+security/i,
+    "B085 recommendations forced RLS açık değil.",
+  ],
+]) {
+  if (!pattern.test(recommendationMigration)) errors.push(message);
 }
 
 const ledgerKernelMigration = await read(

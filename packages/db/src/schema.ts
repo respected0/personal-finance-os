@@ -8,6 +8,7 @@ import {
   foreignKey,
   index,
   integer,
+  interval,
   jsonb,
   numeric,
   pgSchema,
@@ -1583,6 +1584,165 @@ export const planningInvestableRuns = appPrivate.table(
       table.userId,
       table.id,
     ),
+  ],
+);
+
+export const recommendationRules = appPrivate.table(
+  "recommendation_rules",
+  {
+    code: text().notNull(),
+    version: integer().notNull(),
+    defaultThreshold: numeric("default_threshold", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    defaultEnabled: boolean("default_enabled").notNull().default(false),
+    lookback: interval().notNull(),
+    evidenceSchema: jsonb("evidence_schema").notNull(),
+    active: boolean().notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.code, table.version] })],
+);
+
+export const recommendationSettings = appPrivate.table(
+  "recommendation_settings",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    ruleCode: text("rule_code").notNull(),
+    ruleVersion: integer("rule_version").notNull(),
+    threshold: numeric({ precision: 19, scale: 4 }).notNull(),
+    enabled: boolean().notNull(),
+    effectiveFrom: date("effective_from").notNull(),
+    effectiveTo: date("effective_to"),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("recommendation_settings_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    uniqueIndex("recommendation_settings_user_rule_effective_unique").on(
+      table.userId,
+      table.ruleCode,
+      table.ruleVersion,
+      table.effectiveFrom,
+    ),
+    foreignKey({
+      columns: [table.ruleCode, table.ruleVersion],
+      foreignColumns: [recommendationRules.code, recommendationRules.version],
+      name: "recommendation_settings_rule_fk",
+    }),
+  ],
+);
+
+export const recommendationRuns = appPrivate.table(
+  "recommendation_runs",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    period: date().notNull(),
+    sourceWatermark: timestamp("source_watermark", {
+      withTimezone: true,
+    }).notNull(),
+    engineVersion: text("engine_version").notNull(),
+    investableRunId: uuid("investable_run_id").notNull(),
+    scenarioReserveAmount: numeric("scenario_reserve_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("recommendation_runs_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    uniqueIndex("recommendation_runs_input_unique").on(
+      table.userId,
+      table.period,
+      table.investableRunId,
+      table.scenarioReserveAmount,
+    ),
+    foreignKey({
+      columns: [table.userId, table.investableRunId],
+      foreignColumns: [
+        planningInvestableRuns.userId,
+        planningInvestableRuns.id,
+      ],
+      name: "recommendation_runs_investable_run_fk",
+    }),
+  ],
+);
+
+export const recommendations = appPrivate.table(
+  "recommendations",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    runId: uuid("run_id").notNull(),
+    ruleCode: text("rule_code").notNull(),
+    ruleVersion: integer("rule_version").notNull(),
+    usedThreshold: numeric("used_threshold", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    observedAmount: numeric("observed_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    differenceAmount: numeric("difference_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    impactAmount: numeric("impact_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    alternativeAmount: numeric("alternative_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    evidenceJson: jsonb("evidence_json").notNull(),
+    status: text().notNull().default("active"),
+    cooldownUntil: timestamp("cooldown_until", { withTimezone: true }),
+    feedback: text(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("recommendations_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("recommendations_user_run_rule_unique").on(
+      table.userId,
+      table.runId,
+      table.ruleCode,
+      table.ruleVersion,
+    ),
+    foreignKey({
+      columns: [table.userId, table.runId],
+      foreignColumns: [recommendationRuns.userId, recommendationRuns.id],
+      name: "recommendations_run_fk",
+    }),
+    foreignKey({
+      columns: [table.ruleCode, table.ruleVersion],
+      foreignColumns: [recommendationRules.code, recommendationRules.version],
+      name: "recommendations_rule_fk",
+    }),
   ],
 );
 
