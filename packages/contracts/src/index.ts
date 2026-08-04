@@ -2,6 +2,7 @@ export * from "./card.js";
 export * from "./subscription.js";
 export * from "./sharing.js";
 export * from "./daily-core.js";
+export * from "./monthly-report.js";
 export * from "./primitives.js";
 export * from "./problem-details.js";
 export * from "./reconciliation.js";

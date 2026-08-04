@@ -491,6 +491,8 @@ async function runDesktop(cookie, fixture) {
   await expect(reconciliationWorkspace.getByRole("status")).toContainText(
     "Mutabakat gerekçesi",
   );
+  const dashboardExpense = await page.getByTestId("period-expense").innerText();
+  await expect(page.getByTestId("report-expense")).toHaveText(dashboardExpense);
   await expect(firstReceivable).toContainText("Kalan 23,33 TRY");
 
   await page
@@ -672,6 +674,7 @@ try {
     "P0-A2 UAT-06/07 shared expense and partial settlement browser evidence: PASS",
   );
   console.log("P0-A3 UAT-12 reconciliation desktop browser evidence: PASS");
+  console.log("P0-A3 UAT-13 dashboard/monthly report zero difference: PASS");
 } finally {
   await browser?.close();
   if (webProcess && webProcess.exitCode === null) {

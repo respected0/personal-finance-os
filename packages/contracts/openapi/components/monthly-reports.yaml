@@ -1,0 +1,134 @@
+ReportUuid:
+  type: string
+  format: uuid
+
+ReportDate:
+  type: string
+  format: date
+
+ReportDateTime:
+  type: string
+  format: date-time
+
+ReportMoney:
+  type: string
+  pattern: "^-?(?:0|[1-9][0-9]*)\\.[0-9]{4}$"
+
+MonthlyBreakdown:
+  type: object
+  additionalProperties: false
+  required: [categoryId, income, grossExpense, refunds, netExpense]
+  properties:
+    categoryId:
+      oneOf:
+        - { $ref: "#/ReportUuid" }
+        - { type: "null" }
+    income: { $ref: "#/ReportMoney" }
+    grossExpense: { $ref: "#/ReportMoney" }
+    refunds: { $ref: "#/ReportMoney" }
+    netExpense: { $ref: "#/ReportMoney" }
+
+MonthlyTrend:
+  type: object
+  additionalProperties: false
+  required: [date, income, grossExpense, refunds, netExpense, savings]
+  properties:
+    date: { $ref: "#/ReportDate" }
+    income: { $ref: "#/ReportMoney" }
+    grossExpense: { $ref: "#/ReportMoney" }
+    refunds: { $ref: "#/ReportMoney" }
+    netExpense: { $ref: "#/ReportMoney" }
+    savings: { $ref: "#/ReportMoney" }
+
+MonthlyMetrics:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      income,
+      grossExpense,
+      refunds,
+      netExpense,
+      outflow,
+      savings,
+      breakdown,
+      trend,
+    ]
+  properties:
+    income: { $ref: "#/ReportMoney" }
+    grossExpense: { $ref: "#/ReportMoney" }
+    refunds: { $ref: "#/ReportMoney" }
+    netExpense: { $ref: "#/ReportMoney" }
+    outflow: { $ref: "#/ReportMoney" }
+    savings: { $ref: "#/ReportMoney" }
+    breakdown:
+      type: array
+      items: { $ref: "#/MonthlyBreakdown" }
+    trend:
+      type: array
+      items: { $ref: "#/MonthlyTrend" }
+
+MonthlyReport:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      period,
+      version,
+      source,
+      sourceHighWatermark,
+      engineVersion,
+      ruleVersion,
+      generatedAt,
+      staleAt,
+      staleReason,
+      checksum,
+      filters,
+      metrics,
+    ]
+  properties:
+    id:
+      oneOf:
+        - { $ref: "#/ReportUuid" }
+        - { type: "null" }
+    period: { type: string, pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])$" }
+    version:
+      oneOf:
+        - { type: integer, minimum: 1 }
+        - { type: "null" }
+    source: { enum: [live, version] }
+    sourceHighWatermark: { $ref: "#/ReportDateTime" }
+    engineVersion: { const: monthly-report-1.0.0 }
+    ruleVersion: { const: monthly-rules-1.0.0 }
+    generatedAt: { $ref: "#/ReportDateTime" }
+    staleAt:
+      oneOf:
+        - { $ref: "#/ReportDateTime" }
+        - { type: "null" }
+    staleReason:
+      oneOf:
+        - { type: string }
+        - { type: "null" }
+    checksum: { type: string, pattern: "^[a-f0-9]{64}$" }
+    filters:
+      type: object
+      additionalProperties: false
+      required: [accountId, categoryId]
+      properties:
+        accountId:
+          oneOf:
+            - { $ref: "#/ReportUuid" }
+            - { type: "null" }
+        categoryId:
+          oneOf:
+            - { $ref: "#/ReportUuid" }
+            - { type: "null" }
+    metrics: { $ref: "#/MonthlyMetrics" }
+
+MonthlyReportVersionCreate:
+  type: object
+  additionalProperties: false
+  required: [reason]
+  properties:
+    reason: { type: string, minLength: 1, maxLength: 500 }

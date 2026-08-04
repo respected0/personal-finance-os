@@ -77,6 +77,10 @@ jobs:
         run: |
           set -o pipefail
           pnpm reconciliation:integration 2>&1 | tee .tmp/ci/reconciliation-acceptance.log
+      - name: Verify P0-A3 monthly report database acceptance
+        run: |
+          set -o pipefail
+          pnpm report:integration 2>&1 | tee .tmp/ci/report-acceptance.log
       - name: Upload migration smoke report
         if: ${{ always() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
@@ -92,5 +96,6 @@ jobs:
             .tmp/ci/subscription-acceptance.log
             .tmp/ci/sharing-acceptance.log
             .tmp/ci/reconciliation-acceptance.log
+            .tmp/ci/report-acceptance.log
           if-no-files-found: error
           retention-days: 14
