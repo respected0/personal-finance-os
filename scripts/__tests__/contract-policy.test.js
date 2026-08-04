@@ -47,6 +47,10 @@ describe("B005/P0-B1 contract boundary", () => {
       "packages/contracts/openapi/components/planning.yaml",
       "utf8",
     );
+    const investmentComponents = await readFile(
+      "packages/contracts/openapi/components/investment.yaml",
+      "utf8",
+    );
 
     expect(specification).toContain("openapi: 3.1.0");
     expect(specification).toContain("/api/v1/health:");
@@ -97,6 +101,7 @@ describe("B005/P0-B1 contract boundary", () => {
       "/api/v1/expected-payments",
       "/api/v1/expected-payments/{expectedPaymentId}/realize",
       "/api/v1/planning/investable-runs",
+      "/api/v1/market-prices",
     ]);
     expect(specification).not.toMatch(
       /\/api\/v1\/(investments|ledger)(?:\/|:)/u,
@@ -125,6 +130,9 @@ describe("B005/P0-B1 contract boundary", () => {
     expect(dataLifecycleComponents).toContain("AES-256-GCM");
     expect(planningComponents).not.toMatch(
       /\b(userId|user_id|title_enc|title_key_id|title_nonce|title_auth_tag)\b/u,
+    );
+    expect(investmentComponents).not.toMatch(
+      /\b(userId|user_id|ownerId|owner_id)\b/u,
     );
   });
 

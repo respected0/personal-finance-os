@@ -55,6 +55,8 @@ begin
           'goal_contribution_events',
           'expected_payments',
           'planning_investable_runs',
+          'investment_instruments',
+          'market_prices',
           'export_jobs',
           'backup_catalog',
           'restore_validations'
@@ -105,6 +107,8 @@ begin
     or exists (select 1 from app_private.goal_contribution_events)
     or exists (select 1 from app_private.expected_payments)
     or exists (select 1 from app_private.planning_investable_runs)
+    or exists (select 1 from app_private.investment_instruments)
+    or exists (select 1 from app_private.market_prices)
     or exists (select 1 from app_private.export_jobs)
     or exists (select 1 from app_private.backup_catalog)
     or exists (select 1 from app_private.restore_validations)
