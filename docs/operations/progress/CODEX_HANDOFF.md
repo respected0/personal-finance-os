@@ -14,7 +14,9 @@
 - Son çalıştırılan komutlar: `pnpm db:smoke` PASS (iki eşit checksum, drift 0),
   `pnpm reconciliation:integration` PASS, `pnpm daily:api:integration` PASS,
   `pnpm ledger:integration` PASS ve tam `pnpm check` PASS (110 unit).
-- Son FAIL ve kök neden: Seed beyaz listesi yeni P0-A3 tablolarını tanımadığı
+- Son FAIL ve kök neden: PR #17 `auth / integration`, başarılı UAT-12 bildiriminde
+  `role=status` olmadığı için Playwright seçicisi elementi bulamadı; erişilebilir
+  canlı-bölge semantiği eklendi ve yeniden CI bekliyor. Seed beyaz listesi yeni P0-A3 tablolarını tanımadığı
   için ilk smoke batch'i reddetti; yalnız izinli tablo ve sıfır-satır kontrolü
   genişletildi. Testte ciphertext'i UTF-8'e çevirmeye çalışan negatif sorgu da
   düzeltildi. Ürün davranışında açık hata kalmadı.

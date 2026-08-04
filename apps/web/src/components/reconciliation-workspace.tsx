@@ -309,8 +309,16 @@ export function ReconciliationWorkspace({
           </p>
         </div>
       </div>
-      {error && <p className="error-banner">{error}</p>}
-      {notice && <p className="notice-banner">{notice}</p>}
+      {error && (
+        <p className="error-banner" role="alert">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p className="notice-banner" role="status">
+          {notice}
+        </p>
+      )}
       <div className="reconciliation-grid">
         <form onSubmit={createSnapshot}>
           <h3>Bakiye karşılaştır</h3>

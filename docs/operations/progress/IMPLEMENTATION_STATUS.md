@@ -18,7 +18,10 @@
   AAL2 API, owner/original-posting injection rejection PASS. Fresh migration,
   iki reset checksum `5e990c89861690d002ed5564a3080abf3a33c2399db0c88b2bb853dcd49d26c0`,
   drift 0; 110 unit ve tam `pnpm check` PASS.
-- Son FAIL komutu ve kök nedeni: İlk `pnpm db:smoke`, P0-A3 tabloları seed
+- Son FAIL komutu ve kök nedeni: PR #17 `auth / integration`, UAT-12 işlemi
+  başarıyla tamamlanmasına rağmen yeni workspace başarı mesajında erişilebilir
+  `role=status` bulunmadığı için browser assertion'ı elementi bulamadı; semantik
+  eklendi ve yeniden CI bekliyor. İlk `pnpm db:smoke`, P0-A3 tabloları seed
   güvenlik beyaz listesine henüz eklenmediği için `LegacyMigrationSeedError`
   verdi; seed veri eklemeden üç yeni tabloyu sıfır-satır politikasıyla kabul
   edecek şekilde düzeltildi ve smoke PASS oldu. Yerel browser ayrıca sistemde
