@@ -39,6 +39,10 @@ describe("B005/P0-A3 contract boundary", () => {
       "packages/contracts/openapi/components/monthly-reports.yaml",
       "utf8",
     );
+    const dataLifecycleComponents = await readFile(
+      "packages/contracts/openapi/components/data-lifecycle.yaml",
+      "utf8",
+    );
 
     expect(specification).toContain("openapi: 3.1.0");
     expect(specification).toContain("/api/v1/health:");
@@ -76,6 +80,13 @@ describe("B005/P0-A3 contract boundary", () => {
       "/api/v1/shared-expenses",
       "/api/v1/receivables",
       "/api/v1/receivables/{receivableId}/settlements",
+      "/api/v1/auth/step-up",
+      "/api/v1/exports",
+      "/api/v1/exports/{exportId}",
+      "/api/v1/restores/validate",
+      "/api/v1/restores/{validationId}/apply",
+      "/api/v1/account/deletion-requests",
+      "/api/v1/account/deletion-requests/{deletionRequestId}",
     ]);
     expect(specification).not.toMatch(
       /\/api\/v1\/(budgets|investments|ledger)(?:\/|:)/u,
@@ -97,6 +108,11 @@ describe("B005/P0-A3 contract boundary", () => {
     expect(monthlyReportComponents).not.toMatch(
       /\b(userId|user_id|generation_reason_enc|generation_reason_key_id)\b/u,
     );
+    expect(dataLifecycleComponents).not.toMatch(
+      /\b(userId|user_id|archive_ciphertext|confirmation_token_hash|subject_hash)\b/u,
+    );
+    expect(dataLifecycleComponents).toContain("Argon2id");
+    expect(dataLifecycleComponents).toContain("AES-256-GCM");
   });
 
   test("accepts canonical decimal strings and rejects JSON numbers", () => {

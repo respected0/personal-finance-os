@@ -5,6 +5,12 @@ import {
   type LedgerSql,
 } from "@personal-finance-os/db";
 import { cookies } from "next/headers";
+import {
+  createSensitiveProof,
+  sensitiveProofCookieName,
+  sensitiveProofCookieOptions,
+  verifySensitiveProof,
+} from "../auth/sensitive-proof";
 import { createSupabaseBffClient } from "../auth/supabase-server";
 import { createProblemResponse } from "../observability/problem-response";
 import { createRequestContext } from "../observability/request-context";
@@ -96,10 +102,10 @@ function assertSameOrigin(request: Request): void {
 
 export async function requireFinanceRuntime(
   request: Request,
-  assurance: "aal1" | "aal2",
+  assurance: "aal1" | "aal2" | "sensitive",
 ): Promise<FinanceRequestRuntime> {
   const requestId = createRequestContext(request.headers).request_id;
-  if (assurance === "aal2") assertSameOrigin(request);
+  if (assurance !== "aal1") assertSameOrigin(request);
 
   const cookieStore = await cookies();
   const supabase = createSupabaseBffClient({
@@ -114,7 +120,7 @@ export async function requireFinanceRuntime(
   if (userError || !userData.user) {
     throw new FinanceApiError(401, "unauthenticated", "Sign-in is required.");
   }
-  if (assurance === "aal2") {
+  if (assurance !== "aal1") {
     const { data: aalData, error: aalError } =
       await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aalError || aalData.currentLevel !== "aal2") {
@@ -124,6 +130,24 @@ export async function requireFinanceRuntime(
         "Additional verification is required.",
       );
     }
+    if (assurance === "sensitive") {
+      const keyring = accountNameKeyring();
+      const proofKey = keyring.keys.get(keyring.activeKeyId)!;
+      if (
+        !verifySensitiveProof(
+          cookieStore.get(sensitiveProofCookieName)?.value,
+          userData.user.id,
+          Date.now(),
+          proofKey,
+        )
+      ) {
+        throw new FinanceApiError(
+          403,
+          "step_up_required",
+          "A fresh TOTP verification is required for this sensitive action.",
+        );
+      }
+    }
   }
 
   return {
@@ -131,6 +155,65 @@ export async function requireFinanceRuntime(
     requestId,
     sql: financeSql(),
     accountNameKeyring: accountNameKeyring(),
+  };
+}
+
+export async function establishSensitiveActionProof(
+  request: Request,
+  code: string,
+): Promise<{
+  readonly runtime: FinanceRequestRuntime;
+  readonly verifiedAt: string;
+  readonly expiresAt: string;
+}> {
+  const runtime = await requireFinanceRuntime(request, "aal2");
+  const cookieStore = await cookies();
+  const supabase = createSupabaseBffClient({
+    url: requiredEnvironment("NEXT_PUBLIC_SUPABASE_URL"),
+    publishableKey: requiredEnvironment("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
+    cookies: {
+      getAll: () => cookieStore.getAll(),
+      set: (name, value, options) => cookieStore.set(name, value, options),
+    },
+  });
+  const { data: factorData, error: factorError } =
+    await supabase.auth.mfa.listFactors();
+  const factor = factorData?.totp.find(
+    (candidate) => candidate.status === "verified",
+  );
+  if (factorError || !factor) {
+    throw new FinanceApiError(
+      403,
+      "mfa_required",
+      "A verified TOTP factor is required.",
+    );
+  }
+  const { error: verificationError } =
+    await supabase.auth.mfa.challengeAndVerify({
+      factorId: factor.id,
+      code,
+    });
+  if (verificationError) {
+    throw new FinanceApiError(
+      403,
+      "step_up_failed",
+      "TOTP verification failed.",
+    );
+  }
+  const verifiedAtMs = Date.now();
+  const keyring = accountNameKeyring();
+  const proofKey = keyring.keys.get(keyring.activeKeyId)!;
+  cookieStore.set(
+    sensitiveProofCookieName,
+    createSensitiveProof(runtime.userId, verifiedAtMs, proofKey),
+    sensitiveProofCookieOptions,
+  );
+  return {
+    runtime,
+    verifiedAt: new Date(verifiedAtMs).toISOString(),
+    expiresAt: new Date(
+      verifiedAtMs + sensitiveProofCookieOptions.maxAge * 1_000,
+    ).toISOString(),
   };
 }
 

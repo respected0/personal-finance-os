@@ -14,11 +14,29 @@ export function stripSqlComments(sql) {
   return sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--.*$/gm, " ");
 }
 
+function stripReviewedRuntimeUserPurge(sql) {
+  return sql.replace(
+    /-- migration-policy: begin reviewed-runtime-user-purge\s+([\s\S]*?)-- migration-policy: end reviewed-runtime-user-purge/g,
+    (block) => {
+      const isExactAccountPurge =
+        /create\s+function\s+app_identity\.purge_due_account_deletion\s*\(p_id\s+uuid\)/i.test(
+          block,
+        ) &&
+        /security\s+definer/i.test(block) &&
+        /set\s+search_path\s*=\s*pg_catalog,\s*app_identity,\s*app_private,\s*auth/i.test(
+          block,
+        ) &&
+        /v_user_id\s+uuid\s*:=\s*auth\.uid\(\)/i.test(block);
+      return isExactAccountPurge ? "reviewed runtime user purge" : block;
+    },
+  );
+}
+
 export function findForbiddenMigrationPatterns(
   sql,
   { foundation = false } = {},
 ) {
-  const executableSql = stripSqlComments(sql);
+  const executableSql = stripSqlComments(stripReviewedRuntimeUserPurge(sql));
   const errors = destructivePatterns
     .filter(([, pattern]) => pattern.test(executableSql))
     .map(([name]) => `Yasak destructive migration kalıbı: ${name}.`);

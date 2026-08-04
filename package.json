@@ -46,6 +46,7 @@
     "sharing:integration": "pnpm --filter @personal-finance-os/domain build && pnpm --filter @personal-finance-os/db build && pnpm --filter @personal-finance-os/db test:sharing",
     "reconciliation:integration": "pnpm --filter @personal-finance-os/domain build && pnpm --filter @personal-finance-os/db build && pnpm --filter @personal-finance-os/db test:reconciliation",
     "report:integration": "pnpm --filter @personal-finance-os/domain build && pnpm --filter @personal-finance-os/db build && pnpm --filter @personal-finance-os/db test:reports",
+    "data-lifecycle:integration": "pnpm --filter @personal-finance-os/domain build && pnpm --filter @personal-finance-os/db build && pnpm --filter @personal-finance-os/db test:data-lifecycle",
     "fixture:check": "pnpm --filter @personal-finance-os/test-kit build && APP_ENV=test node scripts/test/seed-uat-syn-01.mjs",
     "db:start": "node scripts/db/start.mjs",
     "db:status": "node scripts/db/status.mjs",

@@ -1179,3 +1179,139 @@ export const monthlyReportVersions = appPrivate.table(
     ),
   ],
 );
+
+/** B057-B060 data portability, restore evidence, and deletion lifecycle. */
+export const exportJobs = appPrivate.table(
+  "export_jobs",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    format: text().notNull(),
+    scope: jsonb().$type<readonly string[]>().notNull(),
+    snapshotWatermark: timestamp("snapshot_watermark", {
+      withTimezone: true,
+    }).notNull(),
+    schemaVersion: integer("schema_version").notNull(),
+    status: text().notNull(),
+    fileObjectKey: text("file_object_key").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    checksum: bytea().notNull(),
+    encryptionMetadata: jsonb("encryption_metadata").$type<
+      Record<string, unknown>
+    >(),
+    archiveCiphertext: bytea("archive_ciphertext").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("export_jobs_user_id_unique").on(table.userId, table.id),
+    index("export_jobs_user_created_idx").on(table.userId, table.createdAt),
+    index("export_jobs_expiry_idx").on(table.expiresAt),
+  ],
+);
+
+export const backupCatalog = appPrivate.table(
+  "backup_catalog",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    exportJobId: uuid("export_job_id"),
+    backupType: text("backup_type").notNull(),
+    takenAt: timestamp("taken_at", { withTimezone: true }).notNull(),
+    checksum: bytea().notNull(),
+    restoreTestedAt: timestamp("restore_tested_at", { withTimezone: true }),
+    restoreStatus: text("restore_status"),
+    reconciliationJson: jsonb("reconciliation_json").$type<
+      Record<string, unknown>
+    >(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("backup_catalog_user_id_unique").on(table.userId, table.id),
+    index("backup_catalog_user_taken_idx").on(table.userId, table.takenAt),
+    foreignKey({
+      columns: [table.userId, table.exportJobId],
+      foreignColumns: [exportJobs.userId, exportJobs.id],
+      name: "backup_catalog_export_job_fk",
+    }),
+  ],
+);
+
+export const restoreValidations = appPrivate.table(
+  "restore_validations",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    sourceChecksum: bytea("source_checksum").notNull(),
+    status: text().notNull(),
+    manifestJson: jsonb("manifest_json")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    validationJson: jsonb("validation_json")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    confirmationTokenHash: bytea("confirmation_token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("restore_validations_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    index("restore_validations_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const accountDeletionRequests = appIdentity.table(
+  "account_deletion_requests",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    status: text().notNull(),
+    requestedAt: timestamp("requested_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    backupExpiresAt: timestamp("backup_expires_at", {
+      withTimezone: true,
+    }).notNull(),
+    requestId: text("request_id").notNull(),
+  },
+  (table) => [
+    uniqueIndex("account_deletion_requests_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+  ],
+);
+
+export const accountDeletionReceipts = appIdentity.table(
+  "account_deletion_receipts",
+  {
+    id: uuid().primaryKey(),
+    subjectHash: bytea("subject_hash").notNull(),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull(),
+    purgedAt: timestamp("purged_at", { withTimezone: true }).notNull(),
+    backupExpiresAt: timestamp("backup_expires_at", {
+      withTimezone: true,
+    }).notNull(),
+    orphanRows: integer("orphan_rows").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+);

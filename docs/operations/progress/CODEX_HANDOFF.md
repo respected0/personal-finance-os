@@ -1,35 +1,37 @@
 # Codex Devir Notu
 
-- Devir tarihi: 2026-08-04 14:06 TRT
+- Devir tarihi: 2026-08-04 14:51 TRT
 - Tamamlanan ana aşamalar: M0 B001–B010; P0-A0 B011–B024; P0-A1 B025–B036;
-  P0-A2 B037–B050. Son doğrulanmış main SHA:
-  `ace0d72cdce8828157df4b87a287b1be28826199`.
-- Kısmen tamamlanan görev: P0-A3 B054–B056, branch
-  `feat/p0-a3-monthly-reports`. Ledger-derived aggregate, typed/OpenAPI contract,
-  AAL1/AAL2 routes, responsive report UI, immutable encrypted-reason versions,
-  stale invalidation ve DB/API/browser-CI senaryosu eklendi. Yerel kabul ve
-  `pnpm check` PASS; henüz commit/PR yok.
-- Açık PR/CI: Yok. Son birleşen PR #17, B051–B053 için 10/10 CI PASS.
-- Commitlenmemiş dosyalar: `git status --short` ile B054–B056 migration,
-  report repository/contracts/API/UI/tests/workflow ve progress/handoff değişiklikleri.
-- Son çalıştırılan komutlar: `pnpm db:smoke` PASS (iki eşit checksum, drift 0),
-  `pnpm report:integration` PASS, `pnpm daily:api:integration` PASS ve tam
-  `pnpm check` PASS (110 unit).
-- Son FAIL ve kök neden: Bu dilimde FAIL yok. Önceki PR #17 `role=status`
-  browser düzeltmesi yeni head üzerinde Auth/browser PASS oldu.
-- Kalan kabul kriterleri: B054–B056 secret scan, commit/push/PR ve tüm CI;
-  sonrasında P0-A3 B057–B061, formal G4. Ardından P0-B1, P0-B2, P0-B3 ve
+  P0-A2 B037–B050. P0-A3 B051–B056 main üzerinde. Son doğrulanmış main SHA:
+  `f009fdd660994571c2616c55299b834b5c942c7e`.
+- Kısmen tamamlanan görev: P0-A3 B057–B060, branch
+  `feat/p0-a3-data-lifecycle`. Migration, typed repository/contracts,
+  OpenAPI/API, responsive UI, taze TOTP proof ve gerçek PostgreSQL acceptance
+  hazır; commit/PR henüz yok.
+- Açık PR/CI: Yok. Son birleşen PR #18, B054–B056 için 10/10 CI PASS.
+- Commitlenmemiş dosyalar: `git status --short` ile data lifecycle migration,
+  repository, contracts, routes, UI, tests, workflow, lockfile ve bu progress/
+  handoff değişiklikleri.
+- Son çalıştırılan komutlar: `pnpm data-lifecycle:integration` PASS;
+  `pnpm db:smoke` PASS (fresh, iki eşit checksum, drift 0); `pnpm check` PASS
+  (113 unit); `pnpm security:secret-scan` ve runtime credential scan PASS.
+- Son FAIL ve kök neden: JSON çift kodlama, tablo başına `created_at` varsayımı ve
+  provider token payload okuması sırasıyla native JSON binding, REPEATABLE READ
+  snapshot ve server-signed HttpOnly TOTP proof ile düzeltildi. Güncel head'de
+  bilinen FAIL yok.
+- Kalan kabul kriterleri: B057–B060 commit/push/PR ve 10/10 CI; B061 UAT-01–09,
+  12,13,15,16 + security/restore formal G4. Sonrasında P0-B1, P0-B2, P0-B3 ve
   PRE-RC denetimi.
-- Doğrudan devam talimatı: Branch'te `git diff --check` ve
-  `pnpm security:secret-scan` çalıştır; commit/push/PR aç, `gh pr checks --watch`
-  ile 10/10 sonucu bekle, yalnız PASS ise merge et ve B057–B060'a geç.
-- İlk komutlar: `git status --short --branch`; `git diff --check`;
+- Doğrudan devam talimatı: Branch'i commit/push et, PR aç, `gh pr checks --watch`
+  ile tamamını bekle; yalnız PASS ise merge et. Güncel main'den B061 formal G4
+  branch'i açıp bağlayıcı toplu acceptance/gate kanıtını tamamla.
+- İlk komutlar: `git diff --check`; `git status --short --branch`;
   `pnpm security:secret-scan`.
 - Yapılmaması gerekenler: Değişiklikleri reset/restore/clean ile silme; history
-  rewrite/force push yapma; formal G4 öncesi P0-B1'i main'e alma; production
-  veya remote Supabase/Vercel kaynağı oluşturma.
+  rewrite/force push; formal G4 öncesi P0-B1'i main'e alma; production veya remote
+  Supabase/Vercel/object-storage kaynağı oluşturma; passphrase/secret loglama.
 - Oluşturulmayan production kaynakları: Supabase production projesi, Vercel
-  deployment, production secret, gerçek kullanıcı daveti, production/gerçek veri
-  migration'ı yok.
-- Sonraki büyük aşamaya geçiş: B054–B056 PR'ı CI PASS ile merge edilince P0-A3
-  B057–B060 export/restore/delete dilimine geçilebilir; P0-B1 için formal G4 gerekir.
+  deployment, production secret, gerçek kullanıcı daveti, object storage,
+  production/gerçek veri migration'ı yok.
+- Sonraki büyük aşamaya geçiş: B057–B060 PR'ı CI PASS ile merge edilip B061 formal
+  G4 PASS olmadan P0-B1'e geçilmez.
