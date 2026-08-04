@@ -64,6 +64,9 @@ const FULL_FIDELITY_TABLES = [
   "planning_investable_runs",
   "investment_instruments",
   "market_prices",
+  "investment_trades",
+  "investment_lots",
+  "investment_lot_consumptions",
 ] as const;
 
 export type ExportFormat = "csv" | "full_fidelity";

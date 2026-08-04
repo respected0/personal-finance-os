@@ -57,6 +57,9 @@ begin
           'planning_investable_runs',
           'investment_instruments',
           'market_prices',
+          'investment_trades',
+          'investment_lots',
+          'investment_lot_consumptions',
           'export_jobs',
           'backup_catalog',
           'restore_validations'
@@ -109,6 +112,9 @@ begin
     or exists (select 1 from app_private.planning_investable_runs)
     or exists (select 1 from app_private.investment_instruments)
     or exists (select 1 from app_private.market_prices)
+    or exists (select 1 from app_private.investment_trades)
+    or exists (select 1 from app_private.investment_lots)
+    or exists (select 1 from app_private.investment_lot_consumptions)
     or exists (select 1 from app_private.export_jobs)
     or exists (select 1 from app_private.backup_catalog)
     or exists (select 1 from app_private.restore_validations)
@@ -119,7 +125,7 @@ begin
   end if;
 
   raise notice
-    'P0-B1 seed complete: zero identity, counterparty, account, planning, transaction, posting, audit, outbox, or finance rows.';
+    'P0-B2 seed complete: zero identity, counterparty, account, planning, investment, transaction, posting, audit, outbox, or finance rows.';
 end
 $seed$;
 

@@ -1644,3 +1644,118 @@ export const marketPrices = appPrivate.table(
     }),
   ],
 );
+
+export const investmentTrades = appPrivate.table(
+  "investment_trades",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    transactionId: uuid("transaction_id").notNull(),
+    accountId: uuid("account_id").notNull(),
+    instrumentId: uuid("instrument_id").notNull(),
+    side: text().notNull(),
+    quantity: numeric({ precision: 28, scale: 10 }).notNull(),
+    unitPrice: numeric("unit_price", { precision: 28, scale: 10 }).notNull(),
+    feeAmount: numeric("fee_amount", { precision: 19, scale: 4 }).notNull(),
+    costBasisIncludingFee: numeric("cost_basis_including_fee", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("investment_trades_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("investment_trades_user_transaction_unique").on(
+      table.userId,
+      table.transactionId,
+    ),
+    foreignKey({
+      columns: [table.userId, table.transactionId],
+      foreignColumns: [transactions.userId, transactions.id],
+      name: "investment_trades_transaction_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.accountId],
+      foreignColumns: [financialAccounts.userId, financialAccounts.id],
+      name: "investment_trades_account_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.instrumentId],
+      foreignColumns: [investmentInstruments.userId, investmentInstruments.id],
+      name: "investment_trades_instrument_fk",
+    }),
+  ],
+);
+
+export const investmentLots = appPrivate.table(
+  "investment_lots",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    instrumentId: uuid("instrument_id").notNull(),
+    buyTradeId: uuid("buy_trade_id").notNull(),
+    quantityOpen: numeric("quantity_open", {
+      precision: 28,
+      scale: 10,
+    }).notNull(),
+    unitCost: numeric("unit_cost", { precision: 28, scale: 10 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("investment_lots_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("investment_lots_user_buy_trade_unique").on(
+      table.userId,
+      table.buyTradeId,
+    ),
+    foreignKey({
+      columns: [table.userId, table.instrumentId],
+      foreignColumns: [investmentInstruments.userId, investmentInstruments.id],
+      name: "investment_lots_instrument_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.buyTradeId],
+      foreignColumns: [investmentTrades.userId, investmentTrades.id],
+      name: "investment_lots_buy_trade_fk",
+    }),
+  ],
+);
+
+export const investmentLotConsumptions = appPrivate.table(
+  "investment_lot_consumptions",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    sellTradeId: uuid("sell_trade_id").notNull(),
+    lotId: uuid("lot_id").notNull(),
+    quantity: numeric({ precision: 28, scale: 10 }).notNull(),
+    unitCost: numeric("unit_cost", { precision: 28, scale: 10 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("investment_lot_consumptions_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    uniqueIndex("investment_lot_consumptions_trade_lot_unique").on(
+      table.userId,
+      table.sellTradeId,
+      table.lotId,
+    ),
+    foreignKey({
+      columns: [table.userId, table.sellTradeId],
+      foreignColumns: [investmentTrades.userId, investmentTrades.id],
+      name: "investment_lot_consumptions_sell_trade_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.lotId],
+      foreignColumns: [investmentLots.userId, investmentLots.id],
+      name: "investment_lot_consumptions_lot_fk",
+    }),
+  ],
+);

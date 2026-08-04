@@ -1,8 +1,13 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import {
+  commitInvestmentBuy,
+  createFinancialAccount,
+  createInstitution,
   createLedgerSql,
   createMarketPrice,
+  LedgerReferenceError,
   listLatestMarketPrices,
+  provisionSystemLedgerAccounts,
 } from "../../dist/index.js";
 import {
   runSupabase,
@@ -15,6 +20,10 @@ const sql = createLedgerSql(
 );
 const userA = randomUUID();
 const userB = randomUUID();
+const keyring = {
+  activeKeyId: "local-investment-key-v1",
+  keys: new Map([["local-investment-key-v1", randomBytes(32)]]),
+};
 let stackStarted = false;
 function assert(value, message) {
   if (!value) throw new Error(message);
@@ -28,6 +37,22 @@ try {
   stackStarted = true;
   runSupabase(["db", "reset", "--local"], { capture: true });
   await sql`insert into auth.users (id,email,aud,role,created_at,updated_at) values (${userA}::uuid,${`b073-${userA}@example.test`},'authenticated','authenticated',now(),now()),(${userB}::uuid,${`b073-${userB}@example.test`},'authenticated','authenticated',now(),now())`;
+  await provisionSystemLedgerAccounts(sql, userA);
+  const institution = await createInstitution(sql, {
+    userId: userA,
+    name: "Sentetik Yatırım Bankası",
+    institutionType: "bank",
+    requestId: randomUUID(),
+  });
+  const bank = await createFinancialAccount(sql, keyring, {
+    userId: userA,
+    institutionId: institution.id,
+    name: "Sentetik Yatırım Nakit Hesabı",
+    accountType: "bank",
+    currency: "TRY",
+    openingDate: "2026-08-04",
+    requestId: randomUUID(),
+  });
   const first = await createMarketPrice(sql, {
     userId: userA,
     instrument: {
@@ -44,7 +69,13 @@ try {
   });
   await createMarketPrice(sql, {
     userId: userA,
-    instrument: { ...first.instrument, name: "Sentetik banka altını güncel" },
+    instrument: {
+      symbol: first.instrument.symbol,
+      name: "Sentetik banka altını güncel",
+      instrumentType: first.instrument.instrumentType,
+      unit: first.instrument.unit,
+      currency: first.instrument.currency,
+    },
     price: "2900.0000000001",
     priceAt: "2026-08-04T12:00:00.000Z",
     sourceType: "manual",
@@ -69,9 +100,89 @@ try {
     counts[0]?.instruments === 1 && counts[0]?.prices === 2,
     "B073 symbol upsert or append-only price history failed.",
   );
+  const idempotencyKey = randomUUID();
+  const buyCommand = {
+    type: "investment_buy",
+    currency: "TRY",
+    occurredAt: "2026-08-04T13:00:00.000Z",
+    economicDate: "2026-08-04",
+    cashAccountId: bank.id,
+    instrumentId: first.instrument.id,
+    quantity: "1.3100000000",
+    unitPrice: "2875.1234567890",
+    feeAmount: "7.5000",
+  };
+  const bought = await commitInvestmentBuy(sql, {
+    userId: userA,
+    idempotencyKey,
+    requestId: randomUUID(),
+    command: buyCommand,
+  });
+  assert(
+    bought.trade.costBasisIncludingFee === "3773.9117" &&
+      bought.trade.feeAmount === "7.5000" &&
+      bought.lot.quantityOpen === "1.3100000000" &&
+      bought.lot.unitCost === "2880.8486259542",
+    "B074/B075 fee-inclusive exact lot cost was not preserved.",
+  );
+  assert(
+    bought.effects.personalExpenseDelta === "0.00" &&
+      bought.effects.normalIncomeDelta === "0.00" &&
+      bought.effects.netWorthDelta === "0.00" &&
+      bought.postings.length === 2 &&
+      bought.postings[0]?.ledgerRole === "investment_asset" &&
+      bought.postings[1]?.ledgerRole === "bank_asset",
+    "B074 investment buy changed consumption expense/income/net worth or ledger roles.",
+  );
+  const replayed = await commitInvestmentBuy(sql, {
+    userId: userA,
+    idempotencyKey,
+    requestId: randomUUID(),
+    command: buyCommand,
+  });
+  assert(
+    replayed.replayed &&
+      replayed.transactionId === bought.transactionId &&
+      replayed.trade.id === bought.trade.id &&
+      replayed.lot.id === bought.lot.id,
+    "B074 investment idempotency replay created a different aggregate.",
+  );
+  const beforeRejected = await sql`
+    select (select count(*) from app_private.transactions)::integer transactions,
+      (select count(*) from app_private.investment_trades)::integer trades,
+      (select count(*) from app_private.investment_lots)::integer lots
+  `;
+  try {
+    await commitInvestmentBuy(sql, {
+      userId: userA,
+      idempotencyKey: randomUUID(),
+      requestId: randomUUID(),
+      command: { ...buyCommand, instrumentId: randomUUID() },
+    });
+    throw new Error(
+      "Cross-owner/missing instrument buy unexpectedly succeeded.",
+    );
+  } catch (error) {
+    assert(
+      error instanceof LedgerReferenceError,
+      `B074 invalid instrument returned unexpected error: ${error?.message}`,
+    );
+  }
+  const afterRejected = await sql`
+    select (select count(*) from app_private.transactions)::integer transactions,
+      (select count(*) from app_private.investment_trades)::integer trades,
+      (select count(*) from app_private.investment_lots)::integer lots
+  `;
+  assert(
+    JSON.stringify(beforeRejected[0]) === JSON.stringify(afterRejected[0]),
+    "B074 invalid buy left partial transaction, trade or lot state.",
+  );
   console.log("P0-B2 B073 instrument/manual price PostgreSQL acceptance: PASS");
   console.log(
     "B073 exact numeric(28,10), timestamp/source, latest projection, RLS: PASS",
+  );
+  console.log(
+    "P0-B2 B074/B075 atomic buy, ledger, expense=0, fee-cost lot, idempotency: PASS",
   );
 } finally {
   await sql.end({ timeout: 5 }).catch(() => undefined);

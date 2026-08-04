@@ -40,3 +40,75 @@ MarketPrice:
     priceAt: { type: string, format: date-time }
     sourceType: { enum: [manual, reference_fixture] }
     isEstimated: { type: boolean }
+
+InvestmentTradeCommitRequest:
+  type: object
+  additionalProperties: false
+  required: [command]
+  properties:
+    command: { $ref: "./ledger.yaml#/InvestmentBuyCommand" }
+    previewHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+
+InvestmentTrade:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      id,
+      transactionId,
+      accountId,
+      instrumentId,
+      side,
+      quantity,
+      unitPrice,
+      feeAmount,
+      costBasisIncludingFee,
+    ]
+  properties:
+    id: { type: string, format: uuid }
+    transactionId: { type: string, format: uuid }
+    accountId: { type: string, format: uuid }
+    instrumentId: { type: string, format: uuid }
+    side: { const: buy }
+    quantity: { type: string }
+    unitPrice: { type: string }
+    feeAmount: { type: string }
+    costBasisIncludingFee: { type: string }
+
+InvestmentLot:
+  type: object
+  additionalProperties: false
+  required: [id, instrumentId, buyTradeId, quantityOpen, unitCost]
+  properties:
+    id: { type: string, format: uuid }
+    instrumentId: { type: string, format: uuid }
+    buyTradeId: { type: string, format: uuid }
+    quantityOpen: { type: string }
+    unitCost: { type: string }
+
+InvestmentTradeCommitResponse:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      transactionId,
+      replayed,
+      previewHash,
+      engineVersion,
+      postings,
+      effects,
+      trade,
+      lot,
+    ]
+  properties:
+    transactionId: { type: string, format: uuid }
+    replayed: { type: boolean }
+    previewHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+    engineVersion: { type: string, const: ledger-1.0.0 }
+    postings:
+      type: array
+      minItems: 2
+      items: { $ref: "./ledger.yaml#/PlannedPosting" }
+    effects: { $ref: "./ledger.yaml#/FinancialEffects" }
+    trade: { $ref: "#/InvestmentTrade" }
+    lot: { $ref: "#/InvestmentLot" }
