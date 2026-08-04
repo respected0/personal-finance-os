@@ -85,6 +85,14 @@ jobs:
         run: |
           set -o pipefail
           pnpm data-lifecycle:integration 2>&1 | tee .tmp/ci/data-lifecycle-acceptance.log
+      - name: Verify P0-B1 planning database acceptance
+        run: |
+          set -o pipefail
+          pnpm planning:integration 2>&1 | tee .tmp/ci/planning-acceptance.log
+      - name: Verify P0-B2 investment database acceptance
+        run: |
+          set -o pipefail
+          pnpm investment:integration 2>&1 | tee .tmp/ci/investment-acceptance.log
       - name: Upload migration smoke report
         if: ${{ always() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
@@ -102,5 +110,7 @@ jobs:
             .tmp/ci/reconciliation-acceptance.log
             .tmp/ci/report-acceptance.log
             .tmp/ci/data-lifecycle-acceptance.log
+            .tmp/ci/planning-acceptance.log
+            .tmp/ci/investment-acceptance.log
           if-no-files-found: error
           retention-days: 14

@@ -102,10 +102,12 @@ export function PlanningWorkspace({
   accounts,
   categories,
   refreshToken,
+  onCommitted,
 }: {
   readonly accounts: readonly Account[];
   readonly categories: readonly Category[];
   readonly refreshToken: string;
+  readonly onCommitted: () => void | Promise<void>;
 }) {
   const [period, setPeriod] = useState(currentPeriod());
   const [budget, setBudget] = useState<Budget | null>(null);
@@ -305,7 +307,7 @@ export function PlanningWorkspace({
           economicDate: date.slice(0, 10),
         }),
       });
-      await load();
+      await Promise.all([load(), Promise.resolve(onCommitted())]);
       setNotice("Beklenen ödeme bir kez gelir olarak gerçekleşti.");
       setError("");
     } catch (caught) {

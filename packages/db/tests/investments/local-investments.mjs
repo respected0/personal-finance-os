@@ -266,6 +266,7 @@ try {
       gold.averageUnitCost === "2880.8486259542" &&
       gold.price === "2900.0000000001" &&
       gold.marketValue === "2900.0000" &&
+      gold.allocationPercent === "100.0000" &&
       gold.unrealizedProfitLoss === "19.1514" &&
       gold.priceAt === "2026-08-04T12:00:00.000Z" &&
       gold.sourceType === "manual" &&
@@ -275,6 +276,7 @@ try {
   assert(
     missing?.price === null &&
       missing.marketValue === null &&
+      missing.allocationPercent === null &&
       missing.unrealizedProfitLoss === null &&
       missing.valuationStatus === "missing_price" &&
       missing.isEstimated,
@@ -284,6 +286,55 @@ try {
     (await getPortfolio(sql, { userId: userB, asOf: "2026-08-05T00:00:00Z" }))
       .length === 0,
     "B077 portfolio crossed user ownership.",
+  );
+  const concurrencyCounts = await sql`
+    select (select count(*) from app_private.transactions)::integer transactions,
+      (select count(*) from app_private.investment_trades)::integer trades,
+      (select count(*) from app_private.investment_lot_consumptions)::integer consumptions
+  `;
+  const concurrentSell = {
+    ...sellCommand,
+    instrumentId: missingInstrumentId,
+    quantity: "0.7500000000",
+    unitPrice: "120.0000000000",
+    feeAmount: "0.0000",
+  };
+  const concurrentResults = await Promise.allSettled([
+    commitInvestmentSell(sql, {
+      userId: userA,
+      idempotencyKey: randomUUID(),
+      requestId: randomUUID(),
+      command: concurrentSell,
+    }),
+    commitInvestmentSell(sql, {
+      userId: userA,
+      idempotencyKey: randomUUID(),
+      requestId: randomUUID(),
+      command: concurrentSell,
+    }),
+  ]);
+  assert(
+    concurrentResults.filter(({ status }) => status === "fulfilled").length ===
+      1 &&
+      concurrentResults.filter(({ status }) => status === "rejected").length ===
+        1,
+    "B081 concurrent lot sales did not serialize to exactly one winner.",
+  );
+  const concurrencyAfter = await sql`
+    select (select count(*) from app_private.transactions)::integer transactions,
+      (select count(*) from app_private.investment_trades)::integer trades,
+      (select count(*) from app_private.investment_lot_consumptions)::integer consumptions,
+      (select quantity_open::text from app_private.investment_lots
+        where user_id=${userA}::uuid and instrument_id=${missingInstrumentId}::uuid)::text quantity_open
+  `;
+  assert(
+    concurrencyAfter[0]?.transactions ===
+      concurrencyCounts[0]?.transactions + 1 &&
+      concurrencyAfter[0]?.trades === concurrencyCounts[0]?.trades + 1 &&
+      concurrencyAfter[0]?.consumptions ===
+        concurrencyCounts[0]?.consumptions + 1 &&
+      concurrencyAfter[0]?.quantity_open === "0.2500000000",
+    "B081 rejected concurrent sale left partial ledger, trade, consumption or lot state.",
   );
   const beforeRejected = await sql`
     select (select count(*) from app_private.transactions)::integer transactions,
@@ -327,6 +378,9 @@ try {
   );
   console.log(
     "P0-B2 B077 as-of portfolio quantity/cost/value/P&L/missing-price evidence: PASS",
+  );
+  console.log(
+    "P0-B2 B081 SERIALIZABLE/FOR UPDATE concurrent trade atomic rollback: PASS",
   );
 } finally {
   await sql.end({ timeout: 5 }).catch(() => undefined);
