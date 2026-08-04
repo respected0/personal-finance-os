@@ -6,7 +6,7 @@ info:
   description: >-
     Local and future server contract. P0-A0 exposes typed preview and commit
     boundaries; clients never submit ledger postings or owner identifiers.
-  version: 1.8.0
+  version: 1.9.0
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
@@ -36,6 +36,8 @@ tags:
     description: Ledger-derived monthly metrics with immutable watermark versions
   - name: Data lifecycle
     description: Fresh-step-up export, quarantine restore validation and deletion hold
+  - name: Planning
+    description: Monthly budgets, ledger-derived actuals, goals and virtual allocations
 paths:
   /api/v1/health:
     get:
@@ -1087,6 +1089,111 @@ paths:
                 { $ref: "./components/data-lifecycle.yaml#/AccountDeletion" }
         "403": { $ref: "#/components/responses/ProblemResponse" }
         "404": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/budgets/{period}:
+    get:
+      operationId: getBudget
+      summary: Read an owned monthly budget with posted-expense actuals and forecast
+      tags: [Planning]
+      x-required-aal: aal1
+      parameters:
+        - name: period
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])$" }
+      responses:
+        "200":
+          description: Budget and ledger-derived actual projection
+          content:
+            application/json:
+              schema: { $ref: "./components/planning.yaml#/Budget" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
+    put:
+      operationId: putBudget
+      summary: Replace an owned monthly category plan using optimistic concurrency
+      tags: [Planning]
+      x-required-aal: aal2
+      parameters:
+        - name: period
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])$" }
+        - { $ref: "#/components/parameters/IfMatch" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./components/planning.yaml#/BudgetPut" }
+      responses:
+        "200":
+          description: Updated budget; no separate financial event was written
+          content:
+            application/json:
+              schema: { $ref: "./components/planning.yaml#/Budget" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "409": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/goals:
+    get:
+      operationId: listGoals
+      summary: List goals with allocation and contribution progress
+      tags: [Planning]
+      x-required-aal: aal1
+      responses:
+        "200":
+          description: Owned goal projections
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "./components/planning.yaml#/Goal" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+    post:
+      operationId: createGoal
+      summary: Create a goal without creating an asset or ledger event
+      tags: [Planning]
+      x-required-aal: aal2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./components/planning.yaml#/GoalCreate" }
+      responses:
+        "201":
+          description: Goal created with zero financial effect
+          content:
+            application/json:
+              schema: { $ref: "./components/planning.yaml#/Goal" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+  /api/v1/goals/{goalId}/allocations:
+    post:
+      operationId: createGoalAllocation
+      summary: Allocate eligible account value virtually under a SERIALIZABLE lock
+      description: Creates no posting and changes neither account balance nor net worth.
+      tags: [Planning]
+      x-required-aal: aal2
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/Uuid" }
+        - { $ref: "#/components/parameters/IfMatch" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./components/planning.yaml#/GoalAllocationCreate" }
+      responses:
+        "201":
+          description: Goal projection after the bounded virtual allocation
+          content:
+            application/json:
+              schema: { $ref: "./components/planning.yaml#/Goal" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/ProblemResponse" }
+        "409": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
 components:
   securitySchemes:
     cookieAuth:
