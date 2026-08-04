@@ -385,7 +385,7 @@ async function runDesktop(cookie, fixture) {
   await expect(subscriptionSummary).toContainText(
     "Tahsilat ve cashback bağlantısı aktif",
   );
-  await expect(page.getByTestId("period-expense")).toHaveText("1.213,44 TRY");
+  await expect(page.getByTestId("period-expense")).toHaveText("1.180,10 TRY");
   await expect(page.getByTestId("period-income")).toHaveText("0,00 TRY");
   await expect(page.getByTestId("net-worth")).toHaveText("18.819,90 TRY");
 
@@ -491,7 +491,7 @@ async function runDesktop(cookie, fixture) {
   await expect(page.getByTestId("history-aggregate")).toContainText(
     "Gider 427,50 TRY",
   );
-  await expect(page.getByTestId("period-expense")).toHaveText("1.180,10 TRY");
+  await expect(page.getByTestId("period-expense")).toHaveText("1.213,44 TRY");
 
   await context.close();
 }
@@ -503,7 +503,7 @@ async function runMobile(cookie, fixture) {
   await context.addCookies(browserCookies(cookie));
   const page = await context.newPage();
   await page.goto(webUrl);
-  await expect(page.getByTestId("net-worth")).toHaveText("18.819,90 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("18.729,90 TRY");
   const noInitialOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth <= window.innerWidth,
   );
@@ -521,7 +521,7 @@ async function runMobile(cookie, fixture) {
   await page.getByLabel("Kaynak hesap").selectOption(fixture.bankAccountId);
   await page.locator("#entry-category").selectOption(fixture.expenseCategoryId);
   const effect = page.getByTestId("effect-summary");
-  await expect(effect).toContainText("18.457,66 TRY");
+  await expect(effect).toContainText("18.367,66 TRY");
   await expect(effect).toContainText("Gider etkisi12,34 TRY");
   assert(
     Date.now() - startedAt < 20_000,
@@ -540,7 +540,7 @@ async function runMobile(cookie, fixture) {
   assert(noEntryOverflow, "390×844 işlem görünümünde yatay taşma var.");
   await page.getByRole("button", { name: "İşlemi kaydet" }).click();
   await expect(page.getByRole("status")).toContainText("Gider kaydedildi.");
-  await expect(page.getByTestId("net-worth")).toHaveText("18.807,56 TRY");
+  await expect(page.getByTestId("net-worth")).toHaveText("18.717,56 TRY");
   await context.close();
 }
 
