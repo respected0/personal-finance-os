@@ -1585,3 +1585,62 @@ export const planningInvestableRuns = appPrivate.table(
     ),
   ],
 );
+
+export const investmentInstruments = appPrivate.table(
+  "investment_instruments",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    symbol: text().notNull(),
+    name: text().notNull(),
+    instrumentType: text("instrument_type").notNull(),
+    unit: text().notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    active: boolean().notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("investment_instruments_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    uniqueIndex("investment_instruments_user_symbol_unique").on(
+      table.userId,
+      table.symbol,
+    ),
+  ],
+);
+
+export const marketPrices = appPrivate.table(
+  "market_prices",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    instrumentId: uuid("instrument_id").notNull(),
+    priceAt: timestamp("price_at", { withTimezone: true }).notNull(),
+    price: numeric({ precision: 28, scale: 10 }).notNull(),
+    sourceType: text("source_type").notNull(),
+    isEstimated: boolean("is_estimated").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("market_prices_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("market_prices_user_instrument_time_unique").on(
+      table.userId,
+      table.instrumentId,
+      table.priceAt,
+    ),
+    foreignKey({
+      columns: [table.userId, table.instrumentId],
+      foreignColumns: [investmentInstruments.userId, investmentInstruments.id],
+      name: "market_prices_instrument_fk",
+    }),
+  ],
+);

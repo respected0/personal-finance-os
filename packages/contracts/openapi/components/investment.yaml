@@ -1,0 +1,42 @@
+InstrumentInput:
+  type: object
+  additionalProperties: false
+  required: [symbol, name, instrumentType, unit, currency]
+  properties:
+    symbol: { type: string, pattern: "^[A-Z0-9._-]{1,24}$" }
+    name: { type: string, minLength: 1, maxLength: 120 }
+    instrumentType: { enum: [fund, stock, bond, bank_gold, crypto, other] }
+    unit: { enum: [unit, gram] }
+    currency: { type: string, pattern: "^[A-Z]{3}$" }
+MarketPriceCreate:
+  type: object
+  additionalProperties: false
+  required: [instrument, price, priceAt]
+  properties:
+    instrument: { $ref: "#/InstrumentInput" }
+    price: { type: string, pattern: "^(?:0|[1-9][0-9]*)\\.[0-9]{1,12}$" }
+    priceAt: { type: string, format: date-time }
+    sourceType: { enum: [manual, reference_fixture], default: manual }
+    isEstimated: { type: boolean, default: false }
+MarketPrice:
+  type: object
+  additionalProperties: false
+  required: [id, instrument, price, priceAt, sourceType, isEstimated]
+  properties:
+    id: { type: string, format: uuid }
+    instrument:
+      type: object
+      additionalProperties: false
+      required: [id, symbol, name, instrumentType, unit, currency, active]
+      properties:
+        id: { type: string, format: uuid }
+        symbol: { type: string }
+        name: { type: string }
+        instrumentType: { enum: [fund, stock, bond, bank_gold, crypto, other] }
+        unit: { enum: [unit, gram] }
+        currency: { type: string }
+        active: { type: boolean }
+    price: { type: string }
+    priceAt: { type: string, format: date-time }
+    sourceType: { enum: [manual, reference_fixture] }
+    isEstimated: { type: boolean }
