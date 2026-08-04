@@ -1491,3 +1491,97 @@ export const goalContributionEvents = appPrivate.table(
     }),
   ],
 );
+
+export const expectedPayments = appPrivate.table(
+  "expected_payments",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    sourceEnc: bytea("source_enc").notNull(),
+    sourceKeyId: text("source_key_id").notNull(),
+    sourceAlgorithm: text("source_algorithm").notNull(),
+    sourceEncVersion: smallint("source_enc_version").notNull(),
+    sourceNonce: bytea("source_nonce").notNull(),
+    sourceAuthTag: bytea("source_auth_tag").notNull(),
+    sourceAadVersion: smallint("source_aad_version").notNull(),
+    expectedAmount: numeric("expected_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    expectedDate: date("expected_date").notNull(),
+    certaintyLevel: text("certainty_level").notNull(),
+    status: text().notNull().default("expected"),
+    realizedTransactionId: uuid("realized_transaction_id"),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("expected_payments_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("expected_payments_user_realized_transaction_unique").on(
+      table.userId,
+      table.realizedTransactionId,
+    ),
+    foreignKey({
+      columns: [table.userId, table.realizedTransactionId],
+      foreignColumns: [transactions.userId, transactions.id],
+      name: "expected_payments_realized_transaction_fk",
+    }),
+  ],
+);
+
+export const planningInvestableRuns = appPrivate.table(
+  "planning_investable_runs",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    asOf: date("as_of").notNull(),
+    sourceWatermark: timestamp("source_watermark", {
+      withTimezone: true,
+    }).notNull(),
+    formulaVersion: text("formula_version").notNull(),
+    policyVersion: text("policy_version").notNull(),
+    liquidVerifiedAmount: numeric("liquid_verified_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    committedOutflowAmount: numeric("committed_outflow_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    operatingBufferAmount: numeric("operating_buffer_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    nearTermGoalReserveAmount: numeric("near_term_goal_reserve_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    excludedExpectedAmount: numeric("excluded_expected_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    excludedDoubtfulReceivableAmount: numeric(
+      "excluded_doubtful_receivable_amount",
+      { precision: 19, scale: 4 },
+    ).notNull(),
+    canonicalInvestableAmount: numeric("canonical_investable_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    evidenceJson: jsonb("evidence_json").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("planning_investable_runs_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+  ],
+);

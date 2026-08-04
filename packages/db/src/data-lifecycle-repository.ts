@@ -60,6 +60,8 @@ const FULL_FIDELITY_TABLES = [
   "goals",
   "goal_allocations",
   "goal_contribution_events",
+  "expected_payments",
+  "planning_investable_runs",
 ] as const;
 
 export type ExportFormat = "csv" | "full_fidelity";
