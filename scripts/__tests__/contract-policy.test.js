@@ -5,8 +5,8 @@ import {
   problemDetailsSchema,
 } from "../../packages/contracts/src/index.ts";
 
-describe("B005/P0-A3 contract boundary", () => {
-  test("exposes only approved foundation through monthly report paths", async () => {
+describe("B005/P0-B1 contract boundary", () => {
+  test("exposes only approved foundation through planning paths", async () => {
     const specification = await readFile(
       "packages/contracts/openapi/openapi.yaml",
       "utf8",
@@ -41,6 +41,10 @@ describe("B005/P0-A3 contract boundary", () => {
     );
     const dataLifecycleComponents = await readFile(
       "packages/contracts/openapi/components/data-lifecycle.yaml",
+      "utf8",
+    );
+    const planningComponents = await readFile(
+      "packages/contracts/openapi/components/planning.yaml",
       "utf8",
     );
 
@@ -87,9 +91,12 @@ describe("B005/P0-A3 contract boundary", () => {
       "/api/v1/restores/{validationId}/apply",
       "/api/v1/account/deletion-requests",
       "/api/v1/account/deletion-requests/{deletionRequestId}",
+      "/api/v1/budgets/{period}",
+      "/api/v1/goals",
+      "/api/v1/goals/{goalId}/allocations",
     ]);
     expect(specification).not.toMatch(
-      /\/api\/v1\/(budgets|investments|ledger)(?:\/|:)/u,
+      /\/api\/v1\/(investments|ledger)(?:\/|:)/u,
     );
     expect(ledgerComponents).not.toMatch(
       /\b(userId|user_id|originalPostings|outstandingAmount|availableQuantity|costBasis|alreadyRealized)\b/u,
@@ -113,6 +120,9 @@ describe("B005/P0-A3 contract boundary", () => {
     );
     expect(dataLifecycleComponents).toContain("Argon2id");
     expect(dataLifecycleComponents).toContain("AES-256-GCM");
+    expect(planningComponents).not.toMatch(
+      /\b(userId|user_id|title_enc|title_key_id|title_nonce|title_auth_tag)\b/u,
+    );
   });
 
   test("accepts canonical decimal strings and rejects JSON numbers", () => {

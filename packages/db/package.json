@@ -22,6 +22,7 @@
     "test:reconciliation": "node tests/reconciliation/local-reconciliation.mjs",
     "test:reports": "node tests/reports/local-monthly-reports.mjs",
     "test:data-lifecycle": "node tests/data-lifecycle/local-data-lifecycle.mjs",
+    "test:planning": "node tests/planning/local-planning.mjs",
     "test:ledger": "node tests/ledger/local-ledger.mjs",
     "test:rls": "node tests/rls/local-rls.mjs",
     "typecheck": "pnpm --filter @personal-finance-os/domain build && tsc -p tsconfig.json --noEmit"

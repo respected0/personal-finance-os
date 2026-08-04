@@ -1,55 +1,48 @@
 # Uygulama Durumu
 
-- Güncellendi: 2026-08-04 15:06 TRT
-- Son tamamlanan ana aşama: P0-A3 B051–B060 ürün kapsamı main üzerinde; B061
-  formal G4 kanıtı çalışma branch'inde PASS
-- Tamamlanan backlog maddeleri: B001–B060 main üzerinde. PR #19 B057–B060
-  secure data lifecycle dilimini 10/10 CI PASS ile
-  `b3cf7ae4a0c2d3b7733d8bae9766d906d445f9b2` olarak birleştirdi. B061 formal
-  P0-A QA paketi oluşturuldu.
-- Devam eden backlog maddesi: B061 gate kanıtının PR/CI/merge kapanışı
-- Henüz başlanmayan backlog maddeleri: B062–B104; P0-B1, P0-B2, P0-B3 ve RC
-- Son doğrulanmış main SHA: `b3cf7ae4a0c2d3b7733d8bae9766d906d445f9b2`
-- Güncel çalışma branch'i: `docs/p0-a3-formal-g4`
-- Açık PR: Yok; B061 gate kanıtı commit/push sonrasında açılacak.
-- Son PASS sonuçları: PR #19 10/10 CI. Database job fresh migration, iki eşit
-  checksum `d1543af423b85834d9be298396be2db3dcb6c9baabafac569c74a992cb75349b`,
-  drift 0, ledger UAT 16/16, daily/card/subscription/sharing/reconciliation/report/
-  data-lifecycle acceptance PASS. Auth job gerçek Chromium desktop+390×844
-  UAT-01/02/03/04/05/06/07/12/13/15/16 PASS. RLS, OpenAPI, fixture, unit,
-  format, lint, typecheck ve secret-scan PASS. B061 formal G4 incelemesi kritik/
-  yüksek açık `0` sonucuyla PASS.
-- Son FAIL komutu ve kök nedeni: PR #19 güncel head'inde FAIL yok. B057–B060
-  geliştirme sırasında JSON binding, snapshot ve token-storage sınırı hataları
-  minimum düzeltmelerden sonra tam CI'da PASS oldu.
-- Oluşturulan migration'lar: M0 `00000000000000_m0_foundation.sql`,
-  `00000000000001_m0_rls_harness.sql`; P0-A0 `20260801173000_p0_a0_ledger_kernel.sql`;
-  P0-A1 `20260801212000_p0_a1_daily_core.sql`; P0-A2
-  `20260801231500_p0_a2_card_flows.sql`, `20260801234500_p0_a2_subscriptions.sql`,
-  `20260803000000_p0_a2_sharing_receivables.sql`; P0-A3
-  `20260804130000_p0_a3_reconciliation_reversal.sql`,
-  `20260804143000_p0_a3_monthly_reports.sql`,
-  `20260804160000_p0_a3_data_lifecycle.sql`.
+- Güncellendi: 2026-08-04 15:41 TRT
+- Son tamamlanan ana aşama: P0-A3 B051–B061 ve formal G4 main üzerinde PASS.
+- Tamamlanan backlog maddeleri: B001–B061 main üzerinde. PR #20 formal G4
+  kanıtını 10/10 CI PASS ile `1712869160c2e46700b8cd44da51fb8ccf388c1d`
+  olarak birleştirdi. B062–B067 yerel acceptance seviyesinde tamamlandı.
+- Devam eden backlog maddesi: B062–B067 commit/push/PR/CI/merge kapanışı.
+- Henüz başlanmayan backlog maddeleri: B068–B104; P0-B1 kalan, P0-B2, P0-B3 ve
+  RC. RC bu görevde başlatılmayacak.
+- Son doğrulanmış main SHA: `1712869160c2e46700b8cd44da51fb8ccf388c1d`
+- Güncel çalışma branch'i: `feat/p0-b1-budget-goal-planning`
+- Açık PR: Yok; B062–B067 commit/push sonrasında açılacak.
+- Son PASS sonuçları: B062–B067 typed/static kapı ve `pnpm check` (115 unit)
+  PASS. Gerçek PostgreSQL bütçe actual projection, RLS cross-user 0, şifreli goal
+  title, UAT-11 ledger/bakiye/NW etkisi 0 ve eşzamanlı iki tahsiste tek bounded
+  winner PASS. Fresh migration, iki reset, eşit checksum
+  `3daee384e6459e8e05fc161e3838ca390d47f84387bff475bdb686e25d819b8b`,
+  drift 0. Data lifecycle/export restore, OpenAPI, secret/runtime scans PASS.
+- Son FAIL komutu ve kök nedeni: `pnpm planning:integration` ilk çalışmada seed
+  whitelist yeni tabloları reddetti; güvenli whitelist/sıfır-row kontrolü
+  güncellendi. İlk OpenAPI diff’te export schemaVersion 18 breaking bulundu;
+  archive formatı 17’de tutuldu. Yeniden testler PASS.
+- Oluşturulan migration'lar: Önceki M0/P0-A migration’larına ek olarak P0-B1
+  `20260804173000_p0_b1_budget_goals.sql`.
 - Bilinen teknik borç ve uyarılar: Yerel Linux browser `libnspr4.so` eksikliği
-  nedeniyle browser kabulü GitHub Ubuntu runner'ında doğrulanır. UAT-09 G4
-  kapsamı ledger oracle/INV-08'dir; persistent expected-payment CRUD ve kanonik
-  investable amount bağlayıcı sırayla B068–B072 P0-B1'de kalır.
+  nedeniyle yeni B064/B065/UAT-11 browser akışı GitHub Ubuntu runner’ında
+  doğrulanacak. `goal_allocations.instrument_id` P0-B2 instrument registry için
+  ayrıldı ve B073 gelene kadar DB tarafından fail-closed reddediliyor.
 - Dış kaynak veya kullanıcı kararı bekleyen maddeler: Yok. Production kaynakları
   bilinçli olarak oluşturulmadı.
-- Bir sonraki kesin adım: B061 gate belgesini commit et, push/PR aç, 10/10 CI
-  PASS sonrası merge et; güncel main'den P0-B1 B062–B072 kapsamını çıkar.
+- Bir sonraki kesin adım: browser değişikliğiyle tam check’i yenile, B062–B067’yi
+  commit/push/PR yap, 10/10 CI PASS sonrası merge et; B068–B072’ye geç.
 - Devam etmek için ilk komut: `git diff --check && pnpm check`
 
 ## Bağlayıcı kapılar
 
-| Kapı                   | Durum      | Kanıt                                                       |
-| ---------------------- | ---------- | ----------------------------------------------------------- |
-| G1 Foundation          | PASS       | `docs/operations/gates/G1-foundation.md`                    |
-| G2 P0-A0 Ledger Kernel | PASS       | `docs/operations/gates/G2-ledger-kernel.md`                 |
-| P0-A1 / G3             | PASS       | `docs/operations/gates/G3-p0-a-daily.md`; PR #10 CI 10/10   |
-| P0-A2 / G4 ön kontrolü | PASS       | `docs/operations/gates/G4-p0-a2-precheck.md`; PR #11–#16    |
-| P0-A3 / formal G4      | PASS/PR    | `docs/operations/gates/G4-p0-a-complete.md`; merge bekliyor |
-| P0-B1                  | BAŞLANMADI | Formal G4 kanıt merge bağımlılığı                           |
-| P0-B2                  | BAŞLANMADI | P0-B1 gate bağımlılığı                                      |
-| P0-B3                  | BAŞLANMADI | P0-B1 kanonik çıktısını tüketir                             |
-| RC                     | BAŞLANMADI | Önceki kapılar sonrasında                                   |
+| Kapı                   | Durum        | Kanıt                                                    |
+| ---------------------- | ------------ | -------------------------------------------------------- |
+| G1 Foundation          | PASS         | `docs/operations/gates/G1-foundation.md`                 |
+| G2 P0-A0 Ledger Kernel | PASS         | `docs/operations/gates/G2-ledger-kernel.md`              |
+| P0-A1 / G3             | PASS         | `docs/operations/gates/G3-p0-a-daily.md`; PR #10         |
+| P0-A2 / G4 ön kontrolü | PASS         | `docs/operations/gates/G4-p0-a2-precheck.md`; PR #11–#16 |
+| P0-A3 / formal G4      | PASS         | `docs/operations/gates/G4-p0-a-complete.md`; PR #20      |
+| P0-B1 / G5             | DEVAM EDİYOR | B062–B067 yerel PASS; PR/CI bekliyor                     |
+| P0-B2 / G6             | BAŞLANMADI   | G5 bağımlılığı                                           |
+| P0-B3 / G7             | BAŞLANMADI   | P0-B1 canonical investable sonucu bağımlılığı            |
+| RC                     | BAŞLANMADI   | PRE-RC denetimi öncesinde başlatılmayacak                |

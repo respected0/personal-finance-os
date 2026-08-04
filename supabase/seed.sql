@@ -48,6 +48,11 @@ begin
           'reconciliation_sessions',
           'reconciliation_items',
           'monthly_report_versions',
+          'budgets',
+          'budget_lines',
+          'goals',
+          'goal_allocations',
+          'goal_contribution_events',
           'export_jobs',
           'backup_catalog',
           'restore_validations'
@@ -91,6 +96,11 @@ begin
     or exists (select 1 from app_private.reconciliation_sessions)
     or exists (select 1 from app_private.reconciliation_items)
     or exists (select 1 from app_private.monthly_report_versions)
+    or exists (select 1 from app_private.budgets)
+    or exists (select 1 from app_private.budget_lines)
+    or exists (select 1 from app_private.goals)
+    or exists (select 1 from app_private.goal_allocations)
+    or exists (select 1 from app_private.goal_contribution_events)
     or exists (select 1 from app_private.export_jobs)
     or exists (select 1 from app_private.backup_catalog)
     or exists (select 1 from app_private.restore_validations)
@@ -101,7 +111,7 @@ begin
   end if;
 
   raise notice
-    'P0-A3 seed complete: zero identity, counterparty, account, card, subscription, shared-expense, receivable, settlement, reconciliation, transaction, posting, audit, outbox, or finance rows.';
+    'P0-B1 seed complete: zero identity, counterparty, account, planning, transaction, posting, audit, outbox, or finance rows.';
 end
 $seed$;
 

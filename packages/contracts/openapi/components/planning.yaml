@@ -1,0 +1,110 @@
+PlanningUuid:
+  type: string
+  format: uuid
+PlanningDate:
+  type: string
+  format: date
+PlanningMoney:
+  type: string
+  pattern: "^-?(?:0|[1-9][0-9]*)\\.[0-9]{1,4}$"
+BudgetLineInput:
+  type: object
+  additionalProperties: false
+  required: [categoryId, plannedAmount]
+  properties:
+    categoryId: { $ref: "#/PlanningUuid" }
+    plannedAmount: { $ref: "#/PlanningMoney" }
+    rolloverPolicy: { enum: [none, carry_remaining], default: none }
+    warningThreshold:
+      {
+        type: string,
+        pattern: "^(?:0\\.[0-9]{1,4}|1\\.0{1,4})$",
+        default: "0.8000",
+      }
+BudgetPut:
+  type: object
+  additionalProperties: false
+  required: [lines]
+  properties:
+    status: { enum: [draft, active, archived], default: active }
+    lines: { type: array, maxItems: 250, items: { $ref: "#/BudgetLineInput" } }
+BudgetLine:
+  allOf:
+    - { $ref: "#/BudgetLineInput" }
+    - type: object
+      additionalProperties: false
+      required:
+        [id, actualAmount, remainingAmount, forecastAmount, thresholdReached]
+      properties:
+        id: { $ref: "#/PlanningUuid" }
+        actualAmount: { $ref: "#/PlanningMoney" }
+        remainingAmount: { $ref: "#/PlanningMoney" }
+        forecastAmount: { $ref: "#/PlanningMoney" }
+        thresholdReached: { type: boolean }
+Budget:
+  type: object
+  additionalProperties: false
+  required:
+    [id, period, status, rowVersion, actualFormula, forecastFormula, lines]
+  properties:
+    id: { $ref: "#/PlanningUuid" }
+    period: { type: string, pattern: "^[0-9]{4}-(?:0[1-9]|1[0-2])$" }
+    status: { enum: [draft, active, archived] }
+    rowVersion: { type: integer, minimum: 1 }
+    actualFormula: { const: posted expense debits minus expense credits }
+    forecastFormula: { const: actual / elapsed period days * total period days }
+    lines: { type: array, items: { $ref: "#/BudgetLine" } }
+GoalCreate:
+  type: object
+  additionalProperties: false
+  required: [title, targetAmount, targetDate, priority, riskLevel]
+  properties:
+    title: { type: string, minLength: 1, maxLength: 120 }
+    targetAmount: { $ref: "#/PlanningMoney" }
+    targetDate: { $ref: "#/PlanningDate" }
+    priority: { type: integer, minimum: 1, maximum: 5 }
+    riskLevel: { enum: [low, medium, high] }
+GoalAllocationCreate:
+  type: object
+  additionalProperties: false
+  required: [accountId, allocatedValue, effectiveFrom]
+  properties:
+    accountId: { $ref: "#/PlanningUuid" }
+    allocatedValue: { $ref: "#/PlanningMoney" }
+    effectiveFrom: { $ref: "#/PlanningDate" }
+GoalAllocation:
+  allOf:
+    - { $ref: "#/GoalAllocationCreate" }
+    - type: object
+      required: [id, effectiveTo, rowVersion]
+      properties:
+        id: { $ref: "#/PlanningUuid" }
+        effectiveTo:
+          oneOf: [{ $ref: "#/PlanningDate" }, { type: "null" }]
+        rowVersion: { type: integer, minimum: 1 }
+Goal:
+  allOf:
+    - { $ref: "#/GoalCreate" }
+    - type: object
+      required:
+        [
+          id,
+          status,
+          rowVersion,
+          allocatedValue,
+          actualContributionAmount,
+          progressAmount,
+          remainingAmount,
+          ledgerPostingCount,
+          allocations,
+        ]
+      properties:
+        id: { $ref: "#/PlanningUuid" }
+        status: { enum: [active, completed, archived] }
+        rowVersion: { type: integer, minimum: 1 }
+        allocatedValue: { $ref: "#/PlanningMoney" }
+        actualContributionAmount: { $ref: "#/PlanningMoney" }
+        progressAmount: { $ref: "#/PlanningMoney" }
+        remainingAmount: { $ref: "#/PlanningMoney" }
+        ledgerPostingCount: { const: 0 }
+        allocations: { type: array, items: { $ref: "#/GoalAllocation" } }

@@ -22,6 +22,7 @@ import { SubscriptionWorkspace } from "./subscription-workspace";
 import { ReceivablesWorkspace } from "./receivables-workspace";
 import { ReconciliationWorkspace } from "./reconciliation-workspace";
 import { MonthlyReportWorkspace } from "./monthly-report-workspace";
+import { PlanningWorkspace } from "./planning-workspace";
 
 interface AccountBalance {
   accountId: string;
@@ -741,6 +742,12 @@ export function DailyCoreApp() {
       />
 
       <MonthlyReportWorkspace
+        accounts={accounts}
+        categories={categories}
+        refreshToken={`${dashboard.aggregate.normalIncome}:${dashboard.aggregate.personalExpense}:${dashboard.aggregate.net}`}
+      />
+
+      <PlanningWorkspace
         accounts={accounts}
         categories={categories}
         refreshToken={`${dashboard.aggregate.normalIncome}:${dashboard.aggregate.personalExpense}:${dashboard.aggregate.net}`}

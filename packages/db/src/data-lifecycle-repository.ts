@@ -55,6 +55,11 @@ const FULL_FIDELITY_TABLES = [
   "reconciliation_sessions",
   "reconciliation_items",
   "monthly_report_versions",
+  "budgets",
+  "budget_lines",
+  "goals",
+  "goal_allocations",
+  "goal_contribution_events",
 ] as const;
 
 export type ExportFormat = "csv" | "full_fidelity";

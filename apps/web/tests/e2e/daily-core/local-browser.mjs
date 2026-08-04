@@ -495,6 +495,53 @@ async function runDesktop(cookie, fixture) {
   await expect(page.getByTestId("report-expense")).toHaveText(dashboardExpense);
   await expect(firstReceivable).toContainText("Kalan 23,33 TRY");
 
+  const planningWorkspace = page.locator(".planning-workspace");
+  const netWorthBeforeAllocation = await page
+    .getByTestId("net-worth")
+    .innerText();
+  await planningWorkspace
+    .getByLabel("Sentetik Tarayıcı Market limiti")
+    .fill("1500,0000");
+  await planningWorkspace
+    .getByRole("button", { name: "Bütçeyi kaydet" })
+    .click();
+  await expect(planningWorkspace.getByRole("status")).toContainText(
+    "exact decimal",
+  );
+  await expect(page.getByTestId("budget-projection")).toContainText(
+    "Gerçekleşen",
+  );
+  const goalForm = planningWorkspace.locator("form").filter({
+    has: page.getByRole("heading", { name: "Hedef oluştur" }),
+  });
+  await goalForm.getByLabel("Hedef adı").fill("Sentetik Acil Durum Hedefi");
+  await goalForm.getByLabel("Hedef tutarı").fill("5000,0000");
+  await goalForm.getByLabel("Hedef tarihi").fill("2026-12-31");
+  await goalForm.getByRole("button", { name: "Hedef ekle" }).click();
+  await expect(planningWorkspace.getByRole("status")).toContainText(
+    "net servet değişmedi",
+  );
+  const allocationForm = planningWorkspace.locator("form").filter({
+    has: page.getByRole("heading", { name: "Sanal tahsis" }),
+  });
+  await allocationForm
+    .getByLabel("Hedef")
+    .selectOption({ label: "Sentetik Acil Durum Hedefi" });
+  await allocationForm
+    .getByLabel("Kaynak hesap")
+    .selectOption(fixture.bankAccountId);
+  await allocationForm.getByLabel("Tahsis değeri").fill("1000,0000");
+  await allocationForm.getByRole("button", { name: "Tahsis et" }).click();
+  await expect(planningWorkspace.getByRole("status")).toContainText(
+    "ledger 0, bakiye 0, net servet 0",
+  );
+  await expect(page.getByTestId("goal-progress")).toContainText(
+    "İlerleme 1.000,00 TRY",
+  );
+  await expect(page.getByTestId("net-worth")).toHaveText(
+    netWorthBeforeAllocation,
+  );
+
   await page
     .locator("#history-account-filter")
     .selectOption(fixture.bankAccountId);
@@ -675,6 +722,7 @@ try {
   );
   console.log("P0-A3 UAT-12 reconciliation desktop browser evidence: PASS");
   console.log("P0-A3 UAT-13 dashboard/monthly report zero difference: PASS");
+  console.log("P0-B1 B064/B065/UAT-11 budget-goal browser evidence: PASS");
 } finally {
   await browser?.close();
   if (webProcess && webProcess.exitCode === null) {

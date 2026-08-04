@@ -1315,3 +1315,179 @@ export const accountDeletionReceipts = appIdentity.table(
       .defaultNow(),
   },
 );
+
+export const budgets = appPrivate.table(
+  "budgets",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    period: date().notNull(),
+    status: text().notNull().default("active"),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("budgets_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("budgets_user_period_unique").on(table.userId, table.period),
+  ],
+);
+
+export const budgetLines = appPrivate.table(
+  "budget_lines",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    budgetId: uuid("budget_id").notNull(),
+    categoryId: uuid("category_id").notNull(),
+    plannedAmount: numeric("planned_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    rolloverPolicy: text("rollover_policy").notNull().default("none"),
+    warningThreshold: numeric("warning_threshold", { precision: 7, scale: 4 })
+      .notNull()
+      .default("0.8000"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("budget_lines_user_id_unique").on(table.userId, table.id),
+    uniqueIndex("budget_lines_user_budget_category_unique").on(
+      table.userId,
+      table.budgetId,
+      table.categoryId,
+    ),
+    foreignKey({
+      columns: [table.userId, table.budgetId],
+      foreignColumns: [budgets.userId, budgets.id],
+      name: "budget_lines_budget_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.categoryId],
+      foreignColumns: [categories.userId, categories.id],
+      name: "budget_lines_category_fk",
+    }),
+  ],
+);
+
+export const goals = appPrivate.table(
+  "goals",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    titleEnc: bytea("title_enc").notNull(),
+    titleKeyId: text("title_key_id").notNull(),
+    titleAlgorithm: text("title_algorithm").notNull(),
+    titleEncVersion: smallint("title_enc_version").notNull(),
+    titleNonce: bytea("title_nonce").notNull(),
+    titleAuthTag: bytea("title_auth_tag").notNull(),
+    titleAadVersion: smallint("title_aad_version").notNull(),
+    targetAmount: numeric("target_amount", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    targetDate: date("target_date").notNull(),
+    priority: smallint().notNull(),
+    riskLevel: text("risk_level").notNull(),
+    status: text().notNull().default("active"),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [uniqueIndex("goals_user_id_unique").on(table.userId, table.id)],
+);
+
+export const goalAllocations = appPrivate.table(
+  "goal_allocations",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    goalId: uuid("goal_id").notNull(),
+    accountId: uuid("account_id"),
+    instrumentId: uuid("instrument_id"),
+    allocatedValue: numeric("allocated_value", {
+      precision: 19,
+      scale: 4,
+    }).notNull(),
+    allocatedQuantity: numeric("allocated_quantity", {
+      precision: 31,
+      scale: 12,
+    }),
+    effectiveFrom: date("effective_from").notNull(),
+    effectiveTo: date("effective_to"),
+    rowVersion: integer("row_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("goal_allocations_user_id_unique").on(table.userId, table.id),
+    foreignKey({
+      columns: [table.userId, table.goalId],
+      foreignColumns: [goals.userId, goals.id],
+      name: "goal_allocations_goal_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.accountId],
+      foreignColumns: [financialAccounts.userId, financialAccounts.id],
+      name: "goal_allocations_account_fk",
+    }),
+  ],
+);
+
+export const goalContributionEvents = appPrivate.table(
+  "goal_contribution_events",
+  {
+    id: uuid().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    goalId: uuid("goal_id").notNull(),
+    eventMonth: date("event_month").notNull(),
+    plannedAmount: numeric("planned_amount", { precision: 19, scale: 4 })
+      .notNull()
+      .default("0"),
+    actualAmount: numeric("actual_amount", { precision: 19, scale: 4 })
+      .notNull()
+      .default("0"),
+    actualTransactionId: uuid("actual_transaction_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("goal_contribution_events_user_id_unique").on(
+      table.userId,
+      table.id,
+    ),
+    uniqueIndex("goal_contribution_events_user_goal_month_unique").on(
+      table.userId,
+      table.goalId,
+      table.eventMonth,
+    ),
+    foreignKey({
+      columns: [table.userId, table.goalId],
+      foreignColumns: [goals.userId, goals.id],
+      name: "goal_contribution_events_goal_fk",
+    }),
+    foreignKey({
+      columns: [table.userId, table.actualTransactionId],
+      foreignColumns: [transactions.userId, transactions.id],
+      name: "goal_contribution_events_transaction_fk",
+    }),
+  ],
+);
